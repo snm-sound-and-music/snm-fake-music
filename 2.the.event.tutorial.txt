@@ -1,0 +1,3127 @@
+
+Welcome to the second module in the fake.music and SnM blog.
+
+If you haven't read the first module (Module 1.  Source), then do so.  I mean it.
+
+
+Module 2.  The Event
+=============================================================
+
+The plan for this album is:
+
+   About 40 minutes of sound. (Standard length for an LP record)
+
+   Each track between 2.5 - 3.5 minutes long.
+
+   Use Sound Events.
+
+   No integer arithmetic on frequencies or durations.
+      This last constraint means that there will be no nice sounding harmonies, and no compound rhythms.
+
+Let me show you how to do that..
+
+
+
+Introducting Speculate
+------------------------
+
+Before I get stuck into Sound Events, I want to tell you about Speculate.
+
+Speculate is a class close to the top of the SnM class hierarchy.
+It goes
+
+	Textwise > Tracer > Setable > Speculate 
+
+		then we have
+
+	Generator < Speculate
+	Tickable < Speculate
+
+Almost all SnM classes are subclasses of Speculate.
+
+
+Speculate implements the Speculate programming language, which is the SnM language for specifying and building SnM objects.
+
+Each Speculate object is its own Speculate language engine, which is kinda kewl, but we won't be making use of that just yet. (That will be in Module 4. Nature)
+
+Why Speculate?  Well, it's a joke.  It's the kind of thing that a certain type of geek finds clever and funny. (Like "GNU" - GNU's Not Unix. Get it?)  It's for specifying objects.  A specification is called a spec.  It's a
+language, so you can evaluate an expression.  If I combine evaluate and spec, I get speculate.  What makes it really clever and hilarious is that speculate is already a word, and it has nothing to do with specifications or
+evaluation!  Get it?   *snort*  ha ha ha.  lol. rotfl.
+
+:| 
+
+anyway ...
+
+
+To evaluate an expression, you do
+
+	obj.speculate( code )
+
+Most programming languages have text as their source code.  Speculate takes ruby objects as the source code.
+
+The grammer is:
+
+	if code is an array 
+		if the first element is a recognised command (in the form of a symbol),
+			apply the functionality bound to that command, using the rest of the array as the arguments
+
+		else  
+			speculate() each element of the array, and return an array of the results
+
+	else
+		return code
+
+
+In practice, this works pretty much as you'd expect it to work, even if the explanation doesn't make much sense.
+
+
+There is a top-level utility function for invoking the Speculate language:
+
+	speculate( *cmds )		where *cmds is an arbitrary list of ruby objects.
+
+	it speculates each object in order, and returns the result of the final one.
+
+
+Why do you care?  Well, because make(), which was so useful in the previous module, is just a wrapper for speculate().
+
+	def make( *args )
+		speculate( [:make, *args, ] )
+	end
+
+
+So,
+
+	instead of
+
+		make(
+			Oscillator,
+			[
+				make( Triangle, [ 0.2 ] )
+			]
+		 )
+
+	you can do
+
+		make(
+			Oscillator,
+			[
+				[:make, Triangle, [ 0.2 ] ]
+			]
+		 )
+
+Not much of a change, but it saves you swapping back and forth between array syntax and function syntax.
+
+There is something else to be aware of.
+
+eg:
+
+	shape=make( Triangle, [ 0.2 ] )
+	osc0=make( Oscillator, [ shape ] )
+	osc1=make( Oscillator, [ shape ] )
+
+ results in two oscillators with the same shape (ie, the exact same shape object), 
+
+whereas:
+
+	shape=[:make, Triangle, [ 0.2 ] ]
+	osc0=make( Oscillator, [ shape ] )
+	osc1=make( Oscillator, [ shape ] )
+
+ results it two oscillators, each with their own shape (even though both shapes have the same specification)
+
+
+When ruby sees 
+	make( Triangle, [ 0.2 ] )
+ , it sees a function, which it runs, resulting in a Triangle object.
+
+When ruby sees 
+	[:make, Triangle, [ 0.2 ] ]
+ , it just sees an array, which it leaves as an array.
+
+
+
+Here are some other Speculate commands you might find useful
+--------------------------------------------------------------
+
+[:random, :float, 1.0, 3.0]
+[:random, :freq, 1.0, 3.0]
+[:random, :high, 1.0, 3.0]
+[:random, :integer, 1, 3]
+
+	equivalent to randomFloat(), randomFreq(), etc
+
+[:choose, :from, *choices ]
+[:choose, :weighted, *valueWeights ]
+
+	eg:
+		[:choose, :weighted,  Sine, 5,   Circle, 3,    Quadrant, 0.1 ]
+
+
+Now we can expand on the difference between using functions and using arrays inside make() or [:make ]
+
+For example
+
+	shape=[:make, 
+				Triangle, 
+				[ 
+					randomFloat( 0.0, 1.0) 
+				] 
+			]
+	osc0=make( Oscillator, [ shape ] )
+	osc1=make( Oscillator, [ shape ] )
+
+ results in two oscillators, each has its own Triangle shape, but the same value for apex
+
+whereas:
+
+	shape=[:make, 
+				Triangle, 
+				[ 
+					[:random, :float, 0.0, 1.0 ] 
+				] 
+			]
+	osc0=make( Oscillator, [ shape ] )
+	osc1=make( Oscillator, [ shape ] )
+
+ results it two oscillators, each has its own Triangle shape, and a different value for apex.
+
+
+Or, you can do it like this:
+
+	oscSpec=[:make,
+		Oscillator,
+		[
+			[:make, 
+            Triangle, 
+            [ 
+               [:random, :float, 0.0, 1.0 ] 
+            ] 
+         ]
+		]
+	 ]
+	osc0=speculate( oscSpec )
+	osc1=speculate( oscSpec )
+
+
+With this new knowledge, you can specify objects in a much more fluid way, and you can create object specifications which can be stored and processed as data (ruby arrays), then turned into objects at some later time.
+
+I'll be using this approach in the rest of the tutorials.
+
+
+
+Sound Events
+-------------
+
+In Module 1, I demonstrated that you can create 2-3 minutes of interesting "music" using only continuous sources, also known as Drones.
+
+Continuous Sources are the basis for all sound in Snm, but on their own they have some severe limitations, and so to get an interesting extended piece of music is somewhat demanding, and requires some enginuity and imagination.
+
+Sound Events, on the other hand are much more flexible.  In addition, they correspond more closely to how actual composers and musicians think about music.  This is what we are exploring in this module.
+
+The basic properties of a Sound Event are:
+
+	1. it starts
+	2. it stops
+
+
+Stopable
+--------
+
+Stopable is the base class for all sound events.
+
+	Stopable < StereoSource
+
+So the full hierarchy is
+
+	Textwise > Tracer > Setable > Speculate > Tickable > Source > StereoSource > Stopable
+
+methods are:
+
+	start()				starts the event
+	stopped?()			has the event stopped yet?  ie, is it complete?
+
+The terminology stopped and complete mean the same thing.
+
+Under normal usage, a Stopable object will stop automatically when its conditions have been satisfied (class dependant), so you wouldn't normally envoke the method stop().  In fact, normally it would be a mistake to do so.
+
+Setable keys are:
+
+	:start,  x			# the value of x is ignored. can be nil
+
+
+start() and restart() are identical for Stopable.
+
+
+Fader
+-------
+
+You have already used a Stopable class, but not directly.
+
+The function 
+
+	soundfile( piece, pieceLen, fadeIn, fadeOut )
+
+ will wrap the piece in a Fader, like so:
+
+	Fader.new( piece, pieceLen, fadeIn, fadeOut )
+
+
+The Fader provides the duration, fade-in and fade-out.
+
+
+You can use Fader to start experimenting with sound events:
+
+eg:
+
+	event=make(
+		Mixer,
+		[
+			[:make, 
+				Fader, 
+				[ 
+					[:make, Oscillator, [], :freq, 512 ], 
+					0.1, 0.01, 0.05 
+				],
+				:vol, 1.0
+			],
+			[:make, 
+				Fader, 
+				[ 
+					[:make, Oscillator, [], :freq, 128 ], 
+					0.3, 0.03, 1.0 
+				],
+				:vol, 0.6
+			],
+		]
+	 )
+
+This creates a Mixer of two sound events.  One is 0.1 seconds in duration, the other is 0.3 seconds in duration.  They each have different pitch and volume.
+
+Mixer is itself a subclass of Stopable, and by default, it will stop when all its inputs have stopped.
+
+So the event defined above really is a sound event.  It will start, and it will stop.
+
+Mixer (like Adder, Multiplier and Mix) has a property that controls whether or not it stops when all its input are complete:
+
+	:stopOnInput			if true, stop when all inputs are complete.  true by default.
+
+You also have:
+
+	:startInput					if true, start or restart all inputs whenever the Mixer starts.   true by default
+	:removeInputOnComplete		if true, automatically remove an input if it completes.   false by default
+
+	(similarly, Adder, Multiplier and Mix)
+
+
+After
+------
+
+After postpones the start of an event for a set duration in seconds.
+
+After completes when its input completes.
+
+eg:
+
+	make(
+		After,
+		[
+			2,			# seconds
+			[:make, Oscillator, [], :freq, 256 ]
+		]
+	 )
+
+	will start the oscillator 2 seconds after it starts itself.
+	Because Oscillator never completes, this particular After will never complete.
+
+
+You can use After to create a more complex sound event:
+
+eg:
+
+	make(
+		Mixer,
+		[
+			fader0,
+			[:make, After, [ 0.2, fader1 ] ]
+			[:make, After, [ 0.4, fader2 ] ]
+		]
+	 )
+
+	.. a collection of faders that start at different times.
+
+
+
+In theory, you could create an entire piece involving different sound events using Mixer, Fader and After, but it would be tedious to the extreme, as well as expensive in terms of computing time.  What you need is Sequence.
+
+
+Sequence
+----------
+
+Sequence plays a sequence of sound events one after the other.  As each event completes, Sequence starts the next event.
+
+When the last event completes, Sequence completes.
+
+eg
+	Sequence.new( *events )
+
+	make( Sequence, [ *events ] )
+
+	speculate( [:make, Sequence, [ *events ] ] )
+
+By the standard SnM convention, the array of events is known as the input of the Sequence.  Instance variable @input.
+
+
+Internally, sequence has @currentIndex which points to the current input.
+
+methods
+	skipTo( index )			    sets value of @currentIndex. if index is 0, will also start() the sequence
+
+	add( event )				adds a new event to the end of the sequence.  restarts the sequence
+	addNoSkip( *events )		adds one or more events to the end of the sequence.  @currentIndex doesn't change
+	remove( *events )			remove one or more events from the sequence.  restarts the sequence
+
+	input=( array )			    array is an array of events.  makes array the sequence.  restarts the sequence
+
+	repeats( bool=true )		if bool is true, then on completion, the Sequence will restart.
+									the default setting for Sequence is repeats( false )
+
+setable keys:
+
+	:input, array				array is an array of events.  makes array the sequence.  DOES NOT restart the sequence.
+
+	:clearInput					clears @input. makes it an empty array
+
+	:add, event					adds event to the end of the sequence.  restarts the sequence
+	:add, array					array is an array of events.  adds array to the end of the sequence.  restarts the sequence
+
+	:remove, event				removes event from the sequence
+	:remove, array				removes events from the sequence
+
+	:oneShot					repeats( false )
+
+	:repeats, bool				repeats( bool )
+
+	:skipTo, index				skipTo( index )
+	:start						sets @currentIndex to 0 as a side effect of start()
+
+
+So long as sequence doesn't repeat (which is the default), and all its events complete, then the sequence itself is a Sound Event.
+
+
+Stream
+-------
+
+A Stream is just a Sequence that repeats.  
+
+You can make a Sequence repeat, and you can make a Stream not repeat, but I like to use Stream for something that repeats, just to make the intention more obvious.
+
+
+
+CrossOverStream
+----------------
+
+We covered CrossOverStream in module 1.
+
+CrossOverStream uses a sourceGenerator to supply the input for each new segment.
+If you specify 
+
+	:end
+
+ as the next source (:end is a symbol, not a Source), 
+ then CrossOverStream will fade-out the current segment and complete.
+
+
+Therefore, you can turn CrossOverStream into a sound event that completes.  
+
+It's like a Sequence, except that
+
+	the order of events is specified by a Generator, so can come in an indeterminate order
+	there is a cross-fade between each event.
+
+
+
+Duration
+----------
+
+Duration is a subclass of StereoSource
+
+Duration lasts for a fixed length of time (in seconds).  (So long as the duration isn't changed part-way through)
+
+Its primary purpose is to supply a rest (silence) of a fixed duration, or to wait for a fixed length of time.
+
+eg
+
+	[:make, Duration, [ 3 ] ]			# 3 second rest
+
+By default, Duration outputs 0.0, which is silence.
+
+You can get it to output a different value:
+
+	[:make, Duration, [ 3, 1.0 ] ]		# outputs 1.0 for 3 seconds
+
+or take its output from a source or an event
+
+	[:make, Duration, [ 3, event ] ]		# plays event for 3 seconds.
+
+	If event is shorter than 3 seconds, then it will pad the event out with silence,
+	 otherwise, it will cut the event short.
+		In that case, you will get a glitch in the sound, due to the sudden drop in volume.
+
+Duration is good for padding out the length of an event, but make sure the event is shorter than the duration to avoid ugly glitches.
+
+setable keys
+
+	:duration
+
+	:input
+	:tickInput
+	:startInput
+
+
+Dampen
+---------
+
+Dampen is like Duration with input, but it avoids glitches at the end by fading the input out towards the end
+
+eg
+
+	[:make
+		Dampen,
+		[
+			input,
+			percent			# default is 0.1.  the amount of fadeout, relative to the duration
+		],
+		:duration, 3.0
+	]
+
+	This will play input for 3.0 seconds, but will fade out in the final 0.3 seconds.
+
+Somewhat similar to Fader, but always has 0.0 fade-in, and the fade-out is relative to the duration rather than a set amount of seconds.
+
+
+
+Summary, so far
+-----------------
+
+You now have enough to build an extended piece using Sound Events:
+
+	Fader
+	After
+	Duration
+	Dampen
+	Sequence / Stream
+	CrossOverStream		with :end
+
+ but Fader and Dampen don't really give you a lot of control over the volume envelopes.
+
+
+
+Envelope
+---------
+
+An Envelope is like an Oscillator that only does one cycle.
+In fact, Oscillator is a subclass of Envelope.
+
+eg
+
+	make(
+		Envelope,
+		[
+			[:make, Triangle, [ 0.1 ] ]
+		],
+		:duration, 0.2
+	 )
+
+
+The differences between Envelope and Oscillator are:
+
+	Envelope
+		default shape is Triangle.new( 0.1 )
+		default minValue is 0.0
+		at the end of the cycle, completes, and outputs shape.value( 1.0 )
+		phaseOffset is 0.0 by default
+
+		no built-in pitchBend
+
+	Oscillator
+		default shape is Sine.new
+		default minValue is -1.0
+		at the end of the cycle, wraps around and continues
+		phaseOffset is random by default
+
+		implements multiplier for pitchBend
+
+
+The most common use for an Envelope is as a volume envelope, which is why the minValue is 0.0
+
+If using Envelope for a volume envelope,  choose a Shape that starts and ends at its minimum value.  This will avoid sound glitches at the start and end.
+
+
+Shapes that start and end at the minimum value:
+
+	Sine
+	Triangle			(but not apex of 0.0 or 1.0)
+	SimpleShape
+	NaturalShape
+	OldNaturalEnvelopeShape
+	SlapEnvelopeShape
+	AttackDecay
+	ADS
+	BentSquare
+	SoftSquare
+	SemiCircle
+	Trapezium		    equivalent to Fader
+	Pulse				goes silent part-way through and remains silent
+	Zag
+	Zig
+	SharkTooth
+	BoomShape		    goes silent towards the end and remains silent
+	TwinPeaksShape
+
+	Graph				you can make your own custom shape
+
+
+Shorten
+--------
+
+Shorten < Envelope
+
+Shorten shortens the length of an Envelope, but adds a rest to keep the elapsed duration correct useful in pizzicato, for instance.
+
+	Shorten.new( shape=Triangle.new( 0.0 ), shorten=0.0 )
+
+		 @shorten is the amount of rest at the end.
+
+eg:
+
+	env=make(
+		Shorten,
+		[
+			[:make, Triangle, [ 0.1 ] ],			# 0.1 to avoid glitch at the start
+			0.25									# the last 25% of the duration is silence
+		],
+		:duration,	0.2						# total duration.  triangle takes up 0.15 seconds, silence for 0.05 seconds
+	 )
+
+setable
+	:shorten
+
+
+
+You can use Envelope to control volume
+-----------------------------------------
+
+eg:
+
+	make(
+		Multiplier,
+		[
+			osc,
+			[:make, Envelope, [], :duration, 0.1 ]
+		]
+	 )
+
+ or
+
+	make(
+		Oscillator,
+		[
+		],
+		:ctl,
+			[ :vol,
+				[:make, Envelope, [], :duration, 0.1 ]
+			]
+	 )
+
+but this won't make a sound event, because in both cases, the resulting object will not complete.  What you will get is 0.1 seconds of sound, followed by never-ending silence.
+
+
+To get a sound event, you need to use VolumeControl.
+
+
+VolumeControl
+--------------
+
+Takes a source and applies a volume envelope.
+
+eg:
+
+	make(
+		VolumeControl,
+		[
+			source,
+			[:make, Envelope, [], :duration, 0.1 ]
+		]
+	 )
+
+In general,
+
+	VolumeControl.new( input, envelope )
+
+VolumeControl will stop when the envelope completes.
+
+VolumeControl can control the input's :amp or :vol.  The default is :vol
+
+eg:
+
+	make(
+		VolumeControl,
+		[
+			source,
+			[:make, Envelope, [], :duration, 0.1 ],
+			:amp													# control :amp
+		]
+	 )
+
+	make(
+		VolumeControl,
+		[
+			source,
+			[:make, Envelope, [], :duration, 0.1 ]
+		],
+		:volumeMode,	:amp									# alternative way to control :amp
+	 )
+
+
+envelope doesn't need to complete, in which case the VolumeControl will not complete.
+
+setable:
+	:startEnvelope, bool			if true, will start the envelope when the VolumeControl starts.  true by default
+	:tickEnvelope, bool			    if true, will tick the envelope.  true by default
+
+	:input, source					sets the input
+	:envelope, env					sets the envelope
+
+	:startInput, bool				if true, will start the input when the VolumeControl starts.  false by default
+	:tickInput, bool				if true, will tick the input.  true by default
+
+
+
+Note
+-----
+
+Note is just a VolumeControl, with some extra stuff that makes it useful for creating melodies
+
+It has the same initialisation as VolumeControl, and the same methods and setable interface.
+
+additional stuff
+
+	:duration, d				sets the duration of the envelope
+	:pitch,	freq				sets the pitch of the input
+
+If pitch=0.0, will output silence.  Can be used to create a rest from a melody generator
+If duration is -ve, will set the duration to -duration, and output silence.  Can be used to create a rest from a rhythm generator.
+
+
+I use Note (in preference to VolumeControl) for most sound events because
+
+	Note has all the functionality you want for a sound event
+		It gives you better control over the volume envelope than Fader or Dampen
+		It completes, whereas  Multiplier or :ctl will not
+
+	Note has extra functionality over VolumeControl, even if you don't need it
+		You can set the pitch and the duration independently of each other
+		You can get a rest by setting pitch=0.0 or duration=-ve
+
+	VolumeControl is harder to type, and is a bit of a confusing name.
+
+
+Just remember, that Note doesn't have to mean a note in a melody.  It is just a sound event with a volume envelope.
+
+
+
+
+
+Structure
+----------
+
+Okay, we've now got a lot of material from which to construct an extended sound-scape.
+
+Last module, I talked a bit about structure.  I think of structure as change over time, in such a way that the sound remains interesting.
+
+In module 1, we could only use continuous sources, so our ability to create structure was somewhat limited.
+
+	Mix of ContinuousSource
+
+		you needed to apply continuous volume envelopes to each source in the mix,
+			or make the individual sources continuously change somehow.
+
+		the envelopes needed to have a large volume range to get enough contrast.
+
+
+	CrossFader of ContinuousSource
+
+		the sound keeps swapping back and forward between the two inputs,
+			you need a good contrast between the two inputs
+			the inputs themselves need to continuously change
+
+		this approach can give a strong sense of structure, of the form AB, ABA, ABAB, .. etc
+			provided an Oscillator is used as the fader.
+			This structure can be brought to the fore by an appropriate choice of shape for the fader Oscillator,
+				eg   BentSquare
+
+
+	CrossOverStream of ContinuousSource
+
+		can give a song-like structural form.
+			eg   ABA,  ABC,  ABCDAB, EBCDIC, .. limitless possibilities
+
+		in fact, CrossOverStream is half-way between ContinuousSource and Sequence of SoundEvents.
+			the thing that makes it not pure Sequence is the cross-fading between each section.
+
+
+
+	Basic ContinousSource with LOTS of interesting controls
+
+		eg, an Oscillator with :ctl on :pitch, :vol, :phaseOffset, :pan and the shape
+			these controls themselves need to be controlled so they are constantly changing
+
+
+With the introduction of Sound Events, the options for structure expand, and become easier to manage.
+
+Let's forget about pop music for a moment, and just focus on structures suitable for arhythmic, enharmonic noise.
+
+Here are some basic structures...
+
+
+
+Mixer with backingTrack
+-------------------------
+
+Most of the event-based structural devices we have will result in either periods of silence, or drop-outs in sound.
+
+For example,
+
+		.. # some code here
+
+	sections=Array.new
+	5.times{ | i |
+		sections[ i ]=make(
+			VolumeControl,			# or Note
+			[
+				makeSource(),
+				makeEnvelope()			# 20 or 30 seconds, let's say
+			]
+	}
+
+	piece=make(
+		Sequence,
+		[
+			*sections
+		]
+	 )
+
+
+results in a piece with a number of sections, but between each section, there is a drop-out in sound as one section fades to silence, and the next section fades in from silence.  If you try to avoid silence, (for example, by setting the Envelope :minValue to 0.2), you will get a sound glitch at the point the two sections intersect.
+
+A generic solution to patch over periods of silence, or drop-outs in sound is to have a backingTrack of continuous sound, whose function is to fill in any silence.
+
+The pattern for Mixer with backingTrack is:
+
+	piece=make(
+		Mixer,
+		[
+			backingTrack,
+			*otherTracks
+		]
+	 )
+
+You can impose a structure over the entire piece by making the backingTrack a CrossOverStream with contrasting sections.
+
+Once you have a backingTrack, you can use that as the basis for the piece, and just use the other tracks for extra colour or interest.
+
+eg
+
+	otherTrack=make(
+		Stream,
+		[
+			silence1, soundevent1, 
+			silence2, soundevent2
+		]
+	 )
+
+Recall that Stream is a Sequence that keeps repeating.
+
+Some other possibilities:
+
+	otherTrack=make( Stream, [  fader0, fader1, fader2 ] )
+	otherTrack=make( CrossOverStream, [ ... ] )					# a CrossOverStream can include Durations for silence
+		.. and so on.
+
+
+
+Sequence of short events
+--------------------------
+
+A long sequence of short events reduces the problem of sound drop-out between events because the durations become so short.
+
+You can mix a number of these sequences together to create a texture.
+
+In a sense, a Sequence of short events acts like a ContinuousSource, so anything that works with a ContinuousSource might work with a Sequence of short events.  ( see above, where I reviewed the structures from module 1 ).
+
+Because the gap between each sound is so short, you can create a Sequence of Sequence-of-short-events. 
+
+Unlike a sequence of segments, where each segment is a VolumeControl or Note, there is no drop-out of sound between each segment because any drop-out is too short to notice.
+
+The main disadvantage is that to build a long Sequence of short events, you need to construct a huge number of short events.
+
+It might be easier and more efficient to use shorter sequences as building blocks:
+
+	block=make( Sequence, [ *shortEvents ] )
+	segment=make( Sequence, [ *blocks ] )
+	section=make( Sequence, [ *segments ] )
+	piece=make( Sequence, [ *sections ] )
+
+This would also be a good way to get repetition and familiarity into the piece at different levels, as well as a way to manage contrast and new material.
+
+So long as you keep all the durations consistent, you can use this method to build up several tracks in this way, each track using a different type of sound event, and built in such a way that the sections synchronise when played together.
+
+Keep in mind that you can use Fader, Duration and Dampen to pad or fade a short Sequence to a fixed duration.
+
+A Sequence can't tell you how long it will last, but if you create all the events beforehand, you can calculate the length of each Sequence.
+
+
+
+Mix of Sequence of (overlapping) VolumeControl
+------------------------------------------------
+
+A Sequence of VolumeControl (or Note) where each VolumeControl (or Note) is long enough to count as a section results in drop-out between each section.
+
+One way to patch over that is to use a backingTrack (of continuous sound).
+
+Another way is to mix together one or more of these Sequences in such a way that the drop-outs never over-lap.
+
+That will require planning or some sort of algorithm, but it will work.  You also need to think of how the sections are organised (in terms of content), and the impact this has when different overlapping sections sound together.
+
+For example, you could have two Sequences where all the events are the same length (say 10 seconds).  You then start the second Sequence some time after the first one:
+
+	piece=make(
+		Mixer,
+		[
+			seq0,
+			[:make, 
+				After, 
+				[ 
+					[:random, :float, [ 2, 8 ] ], 
+					seq1 
+				]
+			]
+		]
+	 )
+
+
+
+
+Enough Structure for now!
+--------------------------
+
+There is more to come re Structure, but first we need to talk about..
+
+  Something completely different..
+
+
+
+Trigger
+--------
+
+You remember Setable?
+
+	setable has methods
+
+		set( key, value )
+	and
+		trigger( key, value )
+
+	trigger uses the method
+
+		valueOf( value )
+
+			which returns 
+				value.out for a Source
+				value.nextValue for a Generator
+				value	otherwise.
+
+
+Trigger is a Stopable that runs trigger() on an object.
+
+arguments for Trigger.new are:
+
+	obj			target object, run set() or trigger() on this object
+	key			key for set() or trigger()
+	value		value for set() or trigger()
+	isTrigger	if true, run obj.trigger( key, value ) else run obj.set( key, value ).  true by default.
+
+
+eg:
+
+	trigger=make(
+		Trigger,
+		[
+			osc,		# run the method on this object
+			:pitch,		# key
+			128			# value
+		]
+	 )
+
+
+If, for example, you put this trigger into a sequence, it will change the pitch of osc at that point in time.
+
+	pitchChange=make(
+		Sequence,
+		[
+			[:make, After, [ 12, trigger ] ],
+			[:make, After, [ 10, anotherTrigger ] ],
+		]
+	 )
+
+Trigger completes after a single tick, and it outputs 0.0, so it can be used in amongst actual sound events:
+
+	note=[:make, Note, [ osc, env ] ]
+	seq=make(
+		Sequence,
+		[
+			[:make, Trigger, [ note, :pitch, 128.0 ] ],
+			note,
+			[:make, Trigger, [ note, :pitch, 256.0 ] ],
+			note,
+			[:make, Trigger, [ note, :pitch, 512.0 ] ],
+			note,
+		]
+	 )
+
+
+We can make this "melody" repeat, by using Stream instead of Sequence:
+
+	note=[:make, Note, [ osc, env ] ]
+	seq=make(
+		Stream,
+		[
+			[:make, Trigger, [ note, :pitch, 128.0 ] ],
+			note,
+			[:make, Trigger, [ note, :pitch, 256.0 ] ],
+			note,
+			[:make, Trigger, [ note, :pitch, 512.0 ] ],
+			note,
+		]
+	 )
+
+
+By default, Trigger runs trigger() on the object
+	eg
+		note.trigger( :pitch, 256.0 )
+
+so the value can be a Generator.
+
+Here is an example of a "melody" that plays a random frequency each note
+
+	note=[:make, Note, [ osc, env ] ]
+	seq=make(
+		Stream,
+		[
+			[:make, 
+				Trigger, 
+				[ 
+					note, :pitch, 
+					[:make, RandomFreq, [ 40.0, 1280.0 ] ] 
+
+					# Trigger "triggers" the RandomFreq each time round to fetch the next pitch
+
+				] 
+			],
+			note
+		]
+	 )
+
+
+trig()
+-------
+
+Trigger only takes a single tick to complete. Nevertheless, in a long piece with lots of triggers, over time the ticks can add up and the timing can drift a little.  This is not usually too much of a concern, but it can get problematic if you are doing things like changing chords or keys.  In those cases, being one tick off can be the difference between playing the wrong chord or not.
+
+Stopable implements a method called trig() that solves this problem.
+
+Internally, each Stopable holds an array of Triggers.  Each time a Stopable runs start(), it completes all the triggers in that array.  This is done automatically, and happens "in between" ticks.
+
+You add a Trigger to a Stopable using the method trig() or the setable key :trig.
+
+	trig() takes the same arguments as Trigger.new()
+	:trig takes an array as a value, where the elements of the array are the arguments for trig()
+
+		In each case, the fourth argument (isTrigger) is optional.
+
+
+eg:
+
+	note=Note.new( osc, env )
+	note.trig( osc, :pitch, make( RandomFreq, [ 40.0, 1280.0 ] ) )
+
+	stream=make( Stream, [ note ] )
+
+or, like this:
+
+	note=make(
+		Note,
+		[ osc, env ],
+		:trig,
+			[ osc, :pitch, [:make, [ RandomFreq, [ 40.0, 1280.0 ] ] ]
+	 )
+	stream=make( Stream, [ note ] )
+
+or, like this:
+
+	stream=make(
+		Stream,
+		[
+			[:make,
+				Note,
+				[ osc, env ],
+				:trig,
+					[ osc, :pitch, [:make, [ RandomFreq, [ 40.0, 1280.0 ] ] ]
+			]
+		]
+	 )
+
+
+doTriggers()
+-------------
+
+You can force an object to run its triggers with the method doTriggers()
+
+Setable key is
+
+	:doTriggers
+
+This is sometimes required to initialise everything when a complex object gets built:
+
+	stream=make(
+		Stream,
+		[
+			[:make,
+				Note,
+				[ osc, env ],
+				:trig,
+					[ osc, :pitch, [:make, [ RandomFreq, [ 40.0, 1280.0 ] ] ]
+			]
+		],
+		:doTriggers					# so the note actually has a pitch to start with.
+				# don't need a value here because 
+				#		:doTriggers ignores any value, and 
+				#		there are no more setable keys to follow.
+	 )
+
+
+
+trigme()
+---------
+
+You might be tempted to try:
+
+	note=make(
+		Note,
+		[ osc, env ],
+		:trig, 			
+			[ note, :pitch, [:make, [ RandomFreq, [ 40.0, 1280.0 ] ] ]
+	 )
+
+ie, set the pitch on note rather than osc.  Perfectly valid, but you can't do it like that.
+
+
+The :trig is referring to note, but note hasn't been assigned yet.
+
+If you want to apply a trigger to the object that is being created, use :trigme
+
+	note=make(
+		Note,
+		[ osc, env ],
+		:trigme,			
+			[ :pitch, [:make, [ RandomFreq, [ 40.0, 1280.0 ] ] ]
+	 )
+
+This raises a new problem.
+
+
+:trace, :trigtrace
+--------------------
+
+I told you about trace() in module 1.
+
+Setable also implements a setable key :trace,
+
+	:trace,	msg				# set( :trace, msg ) traces msg to stderr (the logfile)
+
+
+Speculate also implements a command  :trace
+
+	[:trace, *objects ]
+
+	When this command is speculated, it traces all the objects in the list.
+
+
+I also said that tracing can be useful for debugging purposes.  One very common use of tracing is to solve timing issues by tracing the start of specific objects.
+
+eg:
+
+	note=make(
+		Note,
+		[ osc, env ],
+		:trigme,	[ :trace, "note is starting" ]
+	 )
+
+This won't work.
+
+What I want is the following:
+
+	note.trig( :trace, "note is starting" )
+
+but what actually happens is that Speculate sees [:trace, "note is starting" ], and executes it straight away as as valid command.
+
+That is not what I want.
+
+The solution is to use a setable key created specifically for this situation:
+
+	note=make(
+		Note,
+      [ osc, env ],
+      :trigtrace,		"note is starting"
+	 )
+
+
+
+The use of :trig is an extraordinarily powerful and useful tool, and I encourage you to gain a solid working knowledge of it.
+
+
+
+Now, I want to go back to Envelope for a bit..
+
+Envelope does NOT act like a keyboard envelope
+------------------------------------------------
+
+The way a keyboard (including an electronic keyboard or synthesiser) works, the sound starts when you press the key down, and ends sometime after you lift the key up.
+
+MIDI was designed to model this situation, which is why MIDI has codes for Note On and Note Off.
+
+The thing to understand is that until the key is lifted, or the Note Off event is sent, the keyboard doesn't know how long the note is/will be.
+
+This means that all envelopes designed for electronic keyboard or synthesisers (including software synthesisers) assume that the attack/decay/sustain part of the envelope (before the Note Off event) are always exactly the same, irrespective of the total length of the note.  The synthesiser can adjust for different velocity values in the Note On event, but that is unrelated to note length.
+
+SnM takes a different approach.  The envelope has both a shape and a duration (note length).  The shape remains the same, it's just that the shape will get squeezed or stretched according to the length of the note.
+
+This will result in a (possibly subtle) difference in the kind of sound you get when playing a melody - between SnM compared with other sound synthesisers, especially ones that support MIDI.
+
+
+You can approximate a fixed-shape envelope something like this:
+
+	innerNote=make(
+		Note,
+		[
+			source,
+			envelope				# fixed duration
+		]
+	 )
+
+	releaseLen=0.06		# how long it takes for the note to fade out after `NoteOff'
+
+	note=make(
+		Fader,
+		[
+			innerNote,
+			1.0,				# noteLen is set below by :trigme
+			0.0,				# no fade-in, the innerNote's envelope takes care of that part of it
+			releaseLen
+		],
+		:trigme,			[ :duration, rhythm ],	# rhythm generates noteLens
+		:trigme,			[ :reset ],					# required by Fader, rebuilds the Fader envelope
+		:doTriggers										# initialises noteLen
+	 )
+
+
+I couldn't explain this before. You needed to know about :trigme to understand this example.
+
+
+
+Occasional
+-----------
+
+trig() or :trig can be used to make one object change the setting of another object.
+
+This opens up a whole lot of extra possibilities.
+
+Here is an example:
+
+	noteLen=randomFreq( 0.1, 0.2 )
+	npr=randomInteger( 5, 8 )				# notes per repeat
+
+	# create some random pitches in an array
+	pitches=Array.new
+	npr.times{ | i |
+		pitches[ i ]=randomFreq( 128.0, 256.0 )
+	}
+
+	# melody will return those pitches one at a time, and repeat.
+	melody=make( SequenceGenerator, [ pitches ] )
+
+	# oscillator and envelope
+	osc=make( Oscillator, [] )
+	env=make( Triangle, [ 0.1 ] )
+
+	# a note that uses the melody
+	note=make( 
+				Note, 
+				[ osc, env ],
+				:duration, noteLen,
+				:trigme, [ :pitch, melody ]
+			 )
+
+	# play the note over and over (it will play the melody)
+	seq=make( Stream, [ note ] )
+
+I start by creating an array of pitches, and populating it with some random frequencies.
+
+I then create a melody, which is a SequenceGenerator using those pitches.  This melody will just return one pitch at a time and start again at the beginning whenever it gets to the end.
+
+I then create note, which changes pitch every time it restarts, fetching the pitches from melody.
+
+Lastly, I create seq, which just keeps repeating the note.  Since the note keeps changing its pitch, we get a repeating melody.
+
+
+Now, let me make it a bit more interesting:
+
+I also add
+
+	osc.multiplierMode=:factor
+
+	keys=Array.new
+	randomInteger( 4, 8 ).times{ | i |
+		keys[ i ]=randomFloat( 0.0, 1.5 )		# ranges over 1 1/2 octaves.
+	}
+	keyChange=make(
+		Stream,
+		[
+			[:make,
+				Duration,
+				[
+					noteLen*npr*16						# every 16 repetitions of the melody
+				]
+			]
+		],
+		:trig,
+			[
+				osc,
+				:multiplier,
+				[:make, NewFromList, [ *keys ] ]		# choose one of the "keys", and set osc.multiplier
+			],
+		:tickedBy, seq,								    # otherwise, the keyChange Stream will never get ticked
+		:doTriggers										# initialise osc with a value for multiplier
+	 )
+
+What I've now done is to make the melody change key every 16 repetitions.
+
+The Note Stream seq remains the same, it just keeps repeating the same note each time, and the note keeps repeating the same sequence of pitches over and over.
+
+What I've done is to have a separate stream put a pitchbend on the oscillator, choosing a new pitchbend every 16 repetitions  ( noteLen*npr*16 seconds )
+
+keyChange uses a Duration, which determines how long keyChange takes between each restart.
+
+I've put a :trig on the Stream that changes the pitchbend (:multiplier) on the oscillator.  I could have put the :trig on the Duration instead, it doesn't really make any difference in this example.
+
+Because keyChange isn't connected to anything for ticking, I've chosen for seq to tick it, as an obvious choice.
+
+To be complete, I also run :doTriggers, to make sure everything is set up correctly before the piece starts.
+
+
+A shorthand way to create a Stream like keyChange is to use Occasional.
+
+Occasional is a Stream of Duration, and it's main use is to do settings changes for structural purposes.
+
+Occasional < Stream
+
+	Occasional.new( pause=1 )       # float or floatGenerator
+
+	pause specifies the duration of the Duration.
+		if you specify a Generator, the generator will change the duration each time round.
+
+	once you have an Occasonal, just add the triggers you require using :trig
+
+Here is the keyChange example, using Occasional
+
+	keyChange=make(
+		Occasional,
+		[ noteLen*npr*16 ],
+		:trig,
+			[
+				osc,
+				:multiplier,
+				[:make, FromList, [ *keys ] ]
+			],
+		:tickedBy, seq,
+		:doTriggers
+	 )
+
+
+setables for Occasional
+	:pause, d		sets the wait duration or Generator
+
+
+
+Uses of the Setable interface
+--------------------------------
+
+Let's summarise the ways the Setable interface is used:
+
+	in make( .. ) or [:make, .. ]  to configure the object being created
+
+	with ctl() or :ctl, to add continuous control to a setting
+
+	with trig() or :trig, to change a setting at specific points in time.
+
+
+
+AutoStream
+-----------
+
+AutoStream < Stream
+
+	AutoStream.new( inputGenerator )
+
+	each time AutoStream starts, it will use the inputGenerator to rebuild its @input
+	recall, Stream is a Sequence that repeats, and the input is the sequence of events.  It's an array.
+
+The inputGenerator needs to return an array of events.
+
+eg:
+
+	make(
+		AutoStream,
+		[
+			# the inputGenerator..
+
+			[:make,
+				FromList,
+				[
+					# will choose one of the following arrays:
+
+					[ event0 ],
+					[ event1, event2, rest ],
+					eventArray
+
+				]
+			]
+		]
+
+
+
+
+Melodies
+-----------
+fake.music doesn't include any music theory or stylistic hints, we use only "non-musical processes". Nevertheless, it's surprising how close we can get to musical-sounding melodies.
+
+For our purposes, we can define a "melody" as:
+
+	a stream of pitched note (maybe with rests) where the pitch changes each time the note is played.  
+
+In other words:
+
+	[:make,
+		Stream,
+		[
+			[:make,
+				Note,
+				[
+					pitchedSource,					# a source capable of playing a definite pitch
+					envelope
+				],
+				:trigme, [ :pitch, melody ]
+			],
+		 	optionalRest							# possibly with 0.0 duration
+		]
+	]
+
+It can also have a rhythm, and a changing volume to give accents:
+
+	[:make,
+		Stream,
+		[
+			[:make,
+				Note,
+				[
+					pitchSource,
+					envelope
+				],
+				:trigme, [ :pitch,		melody ],
+				:trigme, [ :duration,	rhythm ],
+				:trigme, [ :vol, 			accents ]
+			],
+		 	optionalRest							# with changing duration, possibly 0.0
+		]
+	]
+
+
+The simplest way to create a melody is by using a Generator
+------------------------------------------------------------
+
+All the following melody generators are examples of Markov Chains, which means that no history is kept of what came before, and there is no goal towards which the process is heading.
+
+Music generated using Markov Chains can be classified as "static", meaning it stays "in the same place".  This is in contrast to the last 500 or so years of European music, which (since the Baroque) has developed a sense of key structure, with its functional harmony.  This sort of music is built upon the tension created by the way different chords sound relative to the tonic, and the sense of resolution that comes at a cadence.
+
+fake.music doesn't have that.  Because of the use of Markov Chains, the music is like a perpetual motion machine. Each piece just fades in on the process, and then fades out after a certain amount of time.  In theory, you can extend the length of the piece indefinitely.  It's just that after a while the mind realises that it's just static.
+
+I extend the length of the pieces by changing the music at longer and longer intervals, but I'm still just using Markov processes to do those changes.
+
+
+RandomFreq
+-----------
+
+eg	
+
+	melody=[:make, RandomFreq, [ 128.0, 512.0 ] ]			# random pitches within a 2 octave range
+
+
+BrownFreq
+----------
+	(Similarly, there are also BrownFloat and BrownInteger)
+
+BrownFreq gives a random walk, but with a frequency distribution.  The name comes from Brownian Motion.
+
+	There are constraints that limit the possible frequencies to a minimum and maximum value.
+	The internals of BrownFreq ensure that the melody never goes beyond these limits.  If you like, you can	take a look at the code for BrownFloat to see how it's done.  Not for the faint-hearted.
+
+
+eg
+
+	melody=make(
+		BrownFreq,
+		[
+			baseFreq,
+			startFactor,
+			maxFactor,
+			movementFactor
+		]
+	 )
+
+	baseFreq 
+		a frequency.  All pitches in the melody are calculated relative to this pitch.
+		It is also the lowest pitch possible.
+
+	startFactor	
+		a factor that determines the starting pitch
+		the starting pitch is baseFreq*2**startFactor
+
+	maxFactor	
+		a factor that determines the maximum possible pitch
+		the maximum pitch is baseFreq*2**maxFactor
+
+	movementFactor	
+		a factor that determines the maximum change at each step
+		each new pitch is within the range
+
+			previousPitch*2**-movementFactor and previousPitch*2**movementFactor
+
+
+eg
+
+	melody=make(
+		BrownFreq,
+		[
+			128.0,								# baseFreq
+			[:random, :float, 0.0, 2.0],	    # startFactor
+			2.0,								# 2 octave range
+			0.16,								# maximum of two semitones movement up or down each time.
+		]
+	 )
+
+
+FromList
+---------
+
+pitches are chosen from a fixed list of pitches
+
+eg
+
+	melody=make(
+		FromList,
+		[
+			[
+				[:random, :freq, 128.0, 512.0],
+				[:random, :freq, 128.0, 512.0],
+				[:random, :freq, 128.0, 512.0],
+				[:random, :freq, 128.0, 512.0],
+				[:random, :freq, 128.0, 512.0],
+				[:random, :freq, 128.0, 512.0]
+			]
+		]
+
+eg
+
+	pitches=Array.new
+	randomInteger( 5, 12 ).times{ | i |
+		pitches[ i ]=randomFreq( 128.0, 512.0 )
+	}
+	melody=make(
+		FromList,
+		[ pitches ]
+	 )
+
+
+
+FromWeightedList
+-----------------
+
+chooses from a list of pitches, with a weight on each pitch to specify the probability of choosing that pitch
+
+eg
+	pitches=Array.new
+	weights=Array.new
+	randomInteger( 5, 12 ).times{ | i |
+		pitches[ i ]=randomFreq( 128.0, 512.0 )
+		weights[ i ]=randomFloat( 0.0, 1.0 )
+	}
+	melody=make(
+		FromWeightedList,
+		[ pitches, weights ]
+	 )
+
+
+SequenceGenerator
+------------------
+
+returns pitches from a sequence of pitches.  When it gets to the end, starts again at the beginning
+
+eg
+	pitches=Array.new
+	randomInteger( 3, 8 ).times{ | i |
+		pitches[ i ]=randomFreq( 128.0, 512.0 )
+	}
+	melody=make(
+		SequenceGenerator,
+		[ pitches ]
+	 )
+
+
+SequenceChooser
+----------------
+
+internally, SequenceChooser uses a generator that returns SequenceGenerators.
+It has a current SequenceGenerator.
+It returns values from the current SequenceGenerator, and when the sequence reaches the end, it fetches a new SequenceGenerator to start the next sequence.
+
+eg
+
+	melody=make(
+		SequenceChooser,
+		[ 
+			[:make,
+				NewFromList,				# randomly choose a new pattern each time
+				[
+					sequenceGenerator0,		# generates a (repeatable) pattern of pitches
+					sequenceGenerator1,
+					sequenceGenerator2,
+					sequenceGenerator3
+				]
+			]
+		]
+	 )
+This melody will keep playing note patterns from one of four different sequences, changing the pattern each time.
+
+
+	melody=make(
+		SequenceChooser,
+		[ 
+			[:make,
+				SequenceGenerator,		# always play patterns in the same order
+				[
+					sequenceGenerator0,
+					sequenceGenerator1,
+					sequenceGenerator2,
+					sequenceGenerator3
+				]
+			]
+		]
+	 )
+This melody will keep playing note patterns from one of four different sequences, always playing the patterns in the same order.
+
+
+
+ProbPair 
+----------
+
+ProbPair returns one of two values, with a probability for choosing the first value
+
+eg:
+
+	freq=randomFreq( 128.0, 512.0 )
+	altFreq=freq*7.0/8.0					# two semitones below freq
+	melody=make(
+		ProbPair,
+		[
+			altFreq, freq
+			[:random, :float, 0.12, 0.2 ]		# probability of playing altFreq is between 1:8 and 1:5
+		]
+	 )
+
+	melody just keeps playing the same pitch, but every so often, it plays two semitones lower.
+			
+
+
+ProbPair with reTrigger
+----------
+
+ProbPair has a setting @reTrigger
+
+	when @reTrigger is true, the value returned is valueOf() whichever of the pair is chosen
+
+eg
+
+	melody=make(
+		ProbPair,
+		[
+			[:make, RandomFreq, 40.0, 100.0],
+			[:make, RandomFreq, 218.0, 512.0],
+			[:random, :float, 0.12, 0.2 ]
+		],
+		:reTrigger, 	true
+	 )
+
+melody is now a melody of random freqs in the range 218.0, 512.0, but from time to time, it will play a note in the range 40.0, 100.0
+
+
+
+IntervalMelody
+----------------
+
+IntervalMelody generates a sequence of pitches, where the next pitch is determined by the current pitch and an interval.
+
+The interval comes from an intervalGenerator, stored internally in the IntervalMelody
+
+eg
+
+	make(
+		IntervalMelody,
+		[
+			startFreq, 
+			minFreq, 
+			maxFreq, 
+			FromList.new( [ 3.0/2.0, 2.0/3.0, 9.0/8.0, 8.0/9.0 ] )	# the default intervalGenerator
+		]
+	 )
+
+There are different possible solutions to the question "what happens when the melody strays outside the legal range of minFreq, maxFreq?".
+
+The solution currently implemented is that IntervalMelody will just raise the note up or down an octave until it's within the legal range.
+
+Therefore, try to have the minFreq and maxFreq at least an octave apart.  An octave just means multiply or divide the frequency by 2.0
+
+
+It also works better if the intervalGenerator returns intervals that "balance out".  In other words, over time they tend to return to the same place.
+
+The mathematical way to express this is:
+
+	Product( intervals ) = 1.0 for large number of intervals returned
+
+
+The musical way to express it is that some intervals go up, some go down, and over time they tend to return to the same place.
+
+
+
+EnvelopeMelody
+----------------
+
+An EnvelopeMelody uses a "melodic arc" to describe the path of the melody.  The melody (ie, the pitches returned) will be close to the current value of the melodic arc.
+
+eg:
+
+	EnvelopeMelody.new( melodyEnvelope, scale=nil, tonic=440, neighbourhood=0.0, scaleMode=:closest )
+
+The only mandatory argument is the melodyEnvelope.  Since EnvelopeMelody is a Generator, not a Tickable, it can't tick the melodyEnvelope.  So you either have to tick melodyEnvelope elsewhere, or make it autoTick.
+
+eg:
+
+	make(
+		EnvelopeMelody,
+		[
+			[:make, Oscillator, [], :minValue, 0.0, :maxValue, 2.5, :duration, 10.0, :autoTick ]
+		],
+		:center,  128.0,		    # melodyEnvelope is applied as a factor to this frequency.
+		:neighbourhood,	0.1			# allow a bit over a semitone on either side of the melodyEnvelope
+	 )
+
+The explanation of the arguments are:
+
+	 melodyEnvelope
+		a pitch factor, applied to @center
+
+		float, Generator or Source.
+
+	 scale
+		a scale, if used.  specify nil if there is no scale		(Scale and Key are described later)
+
+	 tonic
+		tonic for the scale (if any).
+		this value also initialises @center, which the melodyEnvelope is applied to
+
+		freq, Generator or Source.
+
+	 neighbourhood
+		a pitch factor
+		added to melodyEnvelope before applying to @center.
+
+		float, Generator or Source.
+
+	 scaleMode
+		used to find the closest scale note if a scale is used.
+
+		legal values:
+			:closest, :closestAbove, :closestBelow
+
+
+
+The pitch is calculated as follows:
+
+	 range=valueOf( @neighbourhood )
+	 freq=valueOf( @center ) * 2**( valueOf( @melodyEnvelope ) + randomFloat( -range, range ) )
+
+	if a scale is used, the closest pitch in the scale is found, using @scale, @tonic and @scaleMode
+
+
+There are also the corresponding setable keys,
+
+	:melodyEnvelope
+	:tonic					# only change the @tonic, doesn't effect @center
+	:scale
+	:neighbourhood
+	:scaleMode
+
+and also
+	:center					# only change @center, doesn't effect @tonic
+		melodyEnvelope is applied to this.  
+		freq, Generator or Progressor.
+
+	:key						# sets @tonic and @scale from a Key
+
+
+Keep in mind that if you are setting a value from :trig, and you want the value to be a Generator or a Source, then you need a fourth argument to prevent "triggering" the Generator or Source:
+
+	:trig, [ intervalMelody, :melodyEnvelope,  osc, false ]
+
+
+
+Scale
+------
+
+I have described numerous ways to generate a "melody" without using scales or keys.
+
+Now, we look at generating melodies using scales and keys.
+
+First, what exactly is a scale?
+
+If you look at music around the world, and historically, you will understand that there are many possible ways you could define the term "scale".
+
+Consider the following:
+
+	is C major and A major the same scale?
+
+	are the major scale in equal-tempered tuning and the major scale as in well-tempered tuning the same scale?
+
+	is C major and A major the same scale in well-tempered tuning?
+
+	is melodic minor a scale?
+
+	are the medieval (or renaissance) modes scales?
+
+	what about the modes of Ancient Greece?  The chromatic and enharmonic modes?
+
+	are modern jazz modes scales?
+
+	what about chromatics, common for example during the Romantic era of classical music?
+
+	is the chromatic scale a scale?  how about the whole-tone scale?  how about the augmented chord?
+
+	do the notes of a scale have to repeat at the octave?
+
+
+The problem for SnM is that it is a software system, so the definition needs to be both rigorous and extendible.
+
+The problem for fake.music is that I want to have no musical theory at all, so everything needs to be described in non-musical terms.
+
+
+I have decided on the following definition for a Scale
+
+	a Scale is defined completely by a set of floating point numbers in the range 1.0 - 2.0
+
+	the set of numbers are sorted in increasing value
+
+	1.0 must be in the list
+	2.0 must not be in the list
+
+This completely defines a Scale.
+
+I have decided (arbitrarily) that the notes of a scale repeat at the octave ( multiply or divide by 2.0 ).
+
+This follows from the normal musical practice, and it's probably the only place in SnM where I have used musical theory as such.
+
+Some researchers have experimented with scales that repeat at intervals other than an octave, so even in music the octave isn't a required feature of a scale.
+
+It might be possible to re-implement Scales so the repeat-interval is setable, but for the time being, 2.0 is the magic number.  That means SnM scales repeat at the octave.
+
+
+Scale has a lot of methods for calculating pitches, finding the next scale note above or below, and so on, but I won't go into any of the details here.  It's all in the source code if you're curious.
+
+I think the things you need to know are:
+
+
+Create a scale:
+
+eg
+
+	make(
+		Scale,
+		[
+			multipliers					# or pitch values
+		]
+	 )
+
+	where multipliers is an arbitrary array of float.
+
+	You don't need to sort the array, and you don't need to have them all in the range 1.0 - 2.0.
+	Scale will "normalise" the array of multipliers you give it.
+		It will take the first element as the base-line and make it 1.0 (and divide all the other elements by that number)
+		All the other values it will bring to the range 1.0 - 2.0
+		It then sorts the array, and removes duplicates.
+
+	So if you know the pitch values for a scale, you can use them to create the Scale.
+
+
+The default Scale is a hard-coded pentatonic scale.  multipliers=[ 1.0, 1.25, 1.375, 1.5, 1.75 ]
+
+	make( Scale )			# pentatonic
+
+
+When using a Scale to play a melody, you also need to specify a tonic.  There are a number of melody generators that take a scale and a tonic as arguments.
+
+
+
+Key
+-----
+
+Key is a simple wrapper that takes a Scale and a tonic and treats them as a unit.
+
+eg
+
+	make(
+		Key,
+		[
+			440.0,																# tonic
+			[:make, EqualTemperedDiatonicScale, [ 12, :maj, :maj, :maj ] ]		# major scale
+		]
+	 )
+
+	The arguments are in the "normal" order, eg    Key.new(  A,  Major )
+
+(You might think from the example above that I AM using musical theory in the definition of the class EqualTemperedDiatonicScale, and in the use of :maj.  In the next tutorial, I'll show how the definition is not based on musical theory at all.  I'm using musical theory in the names, to make it easier to remember)
+
+
+Each of the Scale-based melody generators has a corresponding Key-based generator.
+
+
+KeyMelodicArc < EnvelopeMelody
+----------------
+
+EnvelopeMelody takes an optional Scale and tonic
+
+KeyMelodicArc is the corresponding generator, which takes a Key
+
+eg
+
+	make(
+		KeyMelodicArc,
+		[
+			melodyEnvelope, 
+			key, 
+			neighbourhood,				# optional, defaults to 0.0
+			scaleMode					# optional, defaults to :closest
+		]
+	 )
+
+
+RandomScaleNote, KeyRandom
+----------------
+
+RandomScaleNote generates a random scale note within a range of minFreq, maxFreq
+
+eg
+	make(
+		RandomScaleNote,
+		[
+			scale, tonic, minFreq, maxFreq
+		]
+	 )
+
+You can freeze the generator, so it sticks on the same note
+
+	:freeze, bool		# if true, will stick on the same note
+
+also
+
+	:scale		# set the scale
+	:tonic
+	:minFreq
+	:maxFreq
+
+
+The corresponding Key generator is
+
+	make(
+		KeyRandom,
+		[
+			key, minFreq, maxFreq
+		]
+	 )
+
+it has an additional setable
+
+	:key		# set the Key
+
+
+
+ScaleMeander, KeyMeander
+----------------
+
+These two create a melody that "meanders" using a random walk.  It will only play notes from the specified key.
+
+eg
+	make(
+		ScaleMeander,
+		[
+			scale, tonic, minFreq, maxFreq, 
+			range		# optional. defaults to 2.  each note is at most @range scale steps away from the previous note.
+		]
+	 )
+
+	make(
+		KeyMeander,
+		[
+			key,  minFreq, maxFreq
+		],
+		:range, 			2,
+		:startFreq,		30.0,					# sets nominal start freq
+		:restart								# makes @startFreq the next note. (after correcting for valid range and scale)
+	 )
+
+other setables
+
+	:startFreq			# set the starting freq (doesn't need to be a note in the key)
+	:restart, nil		# restarts, using current value of @startFreq
+	:restart, freq		# restarts, using freq
+
+		# restart ensures that the next note will be based on @startFreq (after correcting for valid range and scale)
+
+	:currentFreq		# sets the currentFreq.  The next note will be a movement away from this value.
+
+
+
+
+ScaleRunGenerator, KeyScaleRun
+----------------
+
+generates scale runs in a specified key
+
+eg
+	make(
+		ScaleRunGenerator,
+		[
+			scale, tonic, startFreq, minFreq, maxFreq, probReverse
+		]
+	 )
+
+	make(
+		KeyScaleRun,
+		[
+			 key, minFreq, maxFreq, probReverse
+		]
+
+
+With ScaleRunGenerator, you explicitly specify the startFreq, with KeyScaleRun it just chooses a randomFreq( minFreq, maxFreq )
+
+
+There are a lot of setable keys and methods that can be used to micro-manage the behaviour of these two classes.  You should probably check the source code.  I don't bother with that stuff much.  (Sometimes when implementing  a new class, you just pile on everything you think you might ever need.  Over time you realise what is useful and what is not).
+
+Internally, there are settings for
+
+	:direction		the current direction.  can be 1.0 or -1.0
+	:reverse		force a reverse of direction
+	:inc			default is 1.  it's the number of scale steps of movement each time
+	:freeze, bool	to make the generator stick on the current note (or un-stick it)
+
+	:probReverse
+
+		This is the only setting I care about.  It specifies the probability that the scale run will reverse its direction.  You can think of it in terms of notes-in-a-row.  eg, 0.2 is 1 in 5, so you can expect to get about 5 notes in a row on average in the same direction.
+
+
+
+Types of Scale
+----------------
+
+Since we are not using the harmonic series yet (that's next month), there are not many types of scale to know.
+
+
+Random Scale
+--------------
+You can generate a random scale by just randomly generating a bunch of float values into an array, and then create the scale from that:
+
+	multipliers=Array.new
+	randomInteger( 5, 10 ).times{ | i | 
+		multipliers[ i ]=randomFloat( 1.0, 2.0 ) 
+	}
+	make( Scale, [ multipliers ] )
+
+
+EqualTemperedScale
+-------------------
+
+EqualTemperedScale makes a scale by dividing the octave into an integer number of equal intervals.
+
+eg
+	make( EqualTemperedScale, [ 12 ] )			# the standard modern keyboard tuning
+	make( EqualTemperedScale, [ 6 ] )			# whole-tone scale
+	make( EqualTemperedScale, [ 4 ] )			# diminished 7th chord
+	make( EqualTemperedScale, [ 3 ] )			# augmented chord
+	make( EqualTemperedScale, [ 2 ] )			# tonic and diminished 5th
+	make( EqualTemperedScale, [ 1 ] )			# same as make( Scale, [ 1.0 ] ).  All the octaves of a single pitch.
+
+
+CombineScales
+---------------
+
+combines one or more scales into a single scale.
+
+eg
+	make(
+		CombineScales,
+		[
+			[:make, EqualTemperedScale, [ 3 ] ],
+			[:make, EqualTemperedScale, [ 7 ] ]
+		]
+	 )
+
+
+ShiftScale
+-----------
+
+creates a new scale by taking a new position as the starting point (root or tonic)
+
+eg
+	make(
+		ShiftScale,
+		[
+			[:make, Scale ],				# hard-coded pentatonic
+			2
+		]
+	 )
+
+ie the same intervals, but starting from a different position.
+
+Note that ShiftScale has no effect on an EqualTemperedScale because all the intervals are the same, and they wrap-around perfectly at the octave.
+
+
+You can create endless varieties of scales, just by using two or more EqualTemperedScale in combination with CombineScales and ShiftScale
+
+Don't expect anything "musical", even by accident.
+
+
+
+Key changes
+------------
+
+All the melody generators based on Scale or Key will automatically adjust to changes in Scale, tonic or Key.
+
+Therefore, you can use Occasional to do modulations and key changes.
+
+eg:
+
+	key=make( Key, [ tonic, scale ] )
+
+	hiMelody=make( a melody generator, using key )
+	hiStream=make(
+		Stream,
+		[
+			hiNote
+		],
+		:trig, [ hiNote, :pitch, hiMelody ]
+	 )
+
+	bassMelody=make( a melody generator, using key )
+	bassStream=make(
+		Stream,
+		[
+			bassNote
+		],
+		:trig, [ bassNote, :pitch, bassMelody ]
+	 )
+
+	keyChange=make(
+		Occasional,
+		[	barLen*12 ],
+		:trig,	
+			[ key, :tonic, 
+				[:make, 
+					IntervalMelody, 
+					[ 40.0, 40.0, 80.0, [:make, FromList, [ [ 3.0/2.0, 2.0/3.0, 9.0/8.0, 8.0/9.0 ] ] ] ] 
+				]
+			],
+		:trig,
+			[ key, :scale,
+				[:make, SequenceGenerator, [ [ majorScale, minorScale ] ] ]
+			],
+		:autoTick
+	 )
+
+The IntervalMelody I am using to change the tonic is just moving up or down either a perfect 5th or a tone, which usually results in a musical kind of key change.  The values 40.0 to 80.0 for the tonic in the IntervalMelody are completely arbitrary, they just provide an octave range (and even that's not neccessary).
+
+Irrespective of how the tonic changes, the various melody generators will still find the closest scale note to the one just played.  The octave of the tonic is completely irrelevant.
+
+
+
+DualSpeedGenerator
+----------------
+
+This is a bit of a diversion.  But it's something worth knowing.
+
+Think about a Source (or a Shape), which is being controlled using a RampStream
+
+The durationGenerator in the RampStream controls how long each change-event lasts.
+
+if durationGenerator gives long durations (say 5-10 seconds), then changes are gradual and subtle.
+if durationGenerator gives short durations (say 0.1 - 0.5 seconds), then changes are sudden and high-impact.
+
+What happens if you use a ProbPair to give both types of duration?
+
+eg
+
+	make(
+		RampStream,
+		[
+			minValue,
+			maxValue,
+			[:make,
+				ProbPair,
+				[
+					[:make, RandomFloat, [ 5.0, 10.0 ] ],
+					[:make, RandomFreq,  [ 0.1, 0.5 ] ],
+					[:random, :float, 0.5, 0.8 ]
+				],
+				:reTrigger, true
+			],
+		]
+	 )
+
+The effect really needs to be heard to get the full impact.  What it sounds like is a human twiddling with a knob. The sound changes gradually most of the time, but every so often, there is a sudden burst and the knob is twisted around dramatically.
+
+The key points are
+	1. there are two different rate-of-change generators
+	2. the probability of the slow generator is higher
+
+Also notice, that the slow one uses RandomFloat, whereas the fast one uses RandomFreq.
+
+In practice, this pattern is so useful, that I have implemented a class that actually does this.
+
+DualSpeedGenerator < ProbPair
+
+eg
+	make(
+		DualSpeedGenerator,
+		[
+			5.0, 10.0, :float,
+			0.1, 0.5, :freq,
+			0.7
+		]
+	 )
+
+is exactly equivalent to
+
+	make(
+		ProbPair,
+		[
+			[:make, RandomFloat, [ 5.0, 10.0 ] ],
+			[:make, RandomFreq,  [ 0.1, 0.5 ] ],
+			0.7
+		],
+		:reTrigger, true
+	 )
+
+
+
+Some more different stuff...
+
+Generator
+----------
+The base class Generator just has a value stored in @current.
+
+nextValue() returns @current.
+
+You can change the value using setable key:
+
+	:current, value		# @current=value
+
+
+ValueGenerator
+---------------
+
+ValueGenerator < Generator
+
+A lot of generators inherit from ValueGenerator.
+This is a kind of wrapper with various settings and methods for customising the behaviour.
+
+Internally, it uses another Generator to provide the values.  The Generator is stored in @generator.
+
+eg
+	gen=make(
+		ValueGenerator,
+		[
+			[:make, RandomFloat, 2.0, 5.0 ]
+		]
+	 )
+
+by default, gen will now return a randomFloat each time nextValue() is invoked.  It is a wrapper for the RandomFloat.
+
+
+methods
+
+	update()
+
+		fetch the next value from @generator and store that value in @current.
+
+By default, update() is called whenever nextValue() is invoked.  The term for this behaviour is autoUpdate.
+
+setable keys:
+
+	:autoUpdate, bool		# sets autoUpdate behaviour.  
+								# if true, update() is called whenever nextValue() is invoked.
+								# true by default
+
+	:update					# invoke update() just this once
+								# used when autoUpdate is false, to change the current value from time to time
+
+	:generator, gen		# change the @generator
+
+	:current, val			# change the value of @current.  
+								#  this is inherited from Generator, but no longer works as expected.
+								# If autoUpdate is true, will be over-ridden by nextValue
+
+	:value, val				# change the value of @current, and set @autoUpdate to false.
+
+	:triggerOnUpdate, bool	# if true, then whenever update() is invoked, the value returned is triggered.
+									# 	if true   update() does @current=valueOf( @generator )
+									# 	if false  update() does @current=@generator
+
+									# true by default.
+
+	:triggerOnNext, bool		# if true, then whenever nextValue() is invoked, the value returned is triggered.
+									# 	if true   nextValue() returns valueOf( @current )
+									# 	if false  nextValue() returns @current
+
+									# false by default
+
+
+triggerOnUpdate and triggerOnNext are for when @generator is a Generator that return Generators or Sources,
+
+eg:
+
+	gen=make(
+		ValueGenerator,
+		[
+			[:make,
+				FromList,
+				[
+					[:make, RandomFloat, 0.1, 0.2 ],
+					[:make, RandomFloat, 1.0, 2.0 ],
+					[:make, RandomFloat, 10.0, 20.0 ]
+				]
+			]
+		]
+	 )
+
+By default @autoUpdate is true, @triggerOnUpdate is true, and @triggerOnNext is false,
+
+ so nextValue() will:
+		1. update()
+				choose one of the RandomFloats
+
+		2. update() will retrigger
+				valueOf( chosen RandomFloat ) is a float. This gets stored in @current
+				
+		3. nextValue() will not retrigger, it just returns the value of @current
+		
+	so nextValue() returns a float
+
+eg:
+
+	gen=make(
+		ValueGenerator,
+		[
+			[:make,
+				FromList,
+				[
+					[:make, RandomFloat, 0.1, 0.2 ],
+					[:make, RandomFloat, 1.0, 2.0 ],
+					[:make, RandomFloat, 10.0, 20.0 ]
+				]
+			]
+		],
+		:autoUpdate,		false,
+		:triggerOnUpdate,	false,
+		:triggerOnNext,	true,
+		:update							# initialise @current with a RandomFloat
+				# no value required, because it's at the end of the list, and :update ignores it's value anyway
+	 )
+
+ now, nextValue() will:
+	1. update() isn't run, so @current stays as the RandomFloats chosen when gen was created by make()
+	2. nextValue triggers @current (which is a RandomFloat) to get a float
+
+	so nextValue() returns a float
+
+
+later, you can update gen:
+
+	gen.update()
+
+	or
+
+		Occasional,
+			..
+		:trig, [ gen, :update ]
+
+ this will change the generator stored in @current.
+
+
+Final example, a ValueGenerator that returns Generators:
+
+	gen=make(
+		ValueGenerator,
+		[
+			[:make,
+				FromList,
+				[
+					[:make, RandomFloat, 0.1, 0.2 ],
+					[:make, RandomFloat, 1.0, 2.0 ],
+					[:make, RandomFloat, 10.0, 20.0 ]
+				]
+			]
+		],
+		:autoUpdate,		true,
+		:triggerOnUpdate,	false,
+		:triggerOnNext,	false,
+		:update
+	 )
+
+There are only three generators in the list, so eventually you will get the same generator again.
+
+
+
+You can also use a Source to provide values.  You need to tick the Source explicitly using :autoTick or :tickedBy.
+
+eg:
+
+	gen=make(
+		ValueGenerator,
+		[
+			[:make, Oscillator, [], :minValue, 10.0, :maxFalue, 100.0, :duration, 12.0, :autoTick ]
+		],
+		:autoUpdate,		true,
+		:triggerOnUpdate,	true
+	 )
+
+ nextValue() will return the current value of the oscillator.
+
+
+
+Gotcha
+-------
+
+In the examples above, ValueGenerator has a Generator or a Source in @generator, and because @triggerOnUpdate is true, the nextValue() comes from that.  (In some of the examples, it's in @current, and @triggerOnNext is true)
+
+Let's say in the last example, you want to change the Source (or Generator) that the ValueGenerator is using:
+
+	# THIS DOES NOT WORK AS EXPECTED
+	changeGen=make(
+		Stream,
+		[
+			[:make,
+				Duration,
+				[ 5.0 ],		# seconds
+				:trig, [ gen, :generator, osc0 ]
+			],	
+			[:make,
+				Duration,
+				[ 5.0 ],
+				:trig, [ gen, :generator, osc1 ]			# a different oscillator
+			],	
+			[:make,
+				Duration,
+				[ 5.0 ],
+				:trig, [ gen, :generator, osc2 ]			# another different oscillator
+			],	
+		]
+	 )	
+
+What you want is for changeGen to change the oscillator used by gen, every 5 seconds.  But that is not what happens.
+
+in		
+	:trig, [ gen, :current, osc0 ]
+what happens is that osc0 is triggered (that's the default behaviour for :trig), and the result is the value stored in gen.
+
+In other words, gen doesn't have an Oscillator in @generator, it has a float.
+
+
+The solution is to use a fourth parameter with :trig.
+
+eg:
+	:trig, [ gen, :generator, osc0, false ]
+
+	the extra parameter indicates whether or not to trigger the value before using it.  default is true.
+
+	so now :trig will do 
+		gen.generator=osc0
+	instead of
+		gen.generator=valueOf( osc0 )
+
+correct solution:
+
+	# THE CORRECT SOLUTION
+	changeGen=make(
+		Stream,
+		[
+			[:make,
+				Duration,
+				[ 5.0 ],		# seconds
+				:trig, [ gen, :generator, osc0, false ]
+			],	
+			[:make,
+				Duration,
+				[ 5.0 ],
+				:trig, [ gen, :generator, osc1, false ]
+			],	
+			[:make,
+				Duration,
+				[ 5.0 ],
+				:trig, [ gen, :generator, osc2, false ]
+			],	
+		]
+	 )	
+
+
+
+White Noise
+------------
+
+White noise is defined similar to white light.  White light contains all possible (visible) wavelengths.  White noise contains all possible (audible) frequencies.
+
+So a way to model white noise is with a bank of oscillators:
+
+	allFrequencies=Array.new
+	10000000.times{ | i |
+		freq=randomFloat( 0.0, 50000.0 )
+		allFrequencies[ i ]=make( Oscillator, [], :freq, freq )
+	}
+	whiteNoise=make(
+		Mixer,
+		[
+			allFrequencies
+		]
+	 )
+
+Alternatively, you can build up allFrequencies like this
+
+	minFreq=0.0
+	maxFreq=50000.0
+	oscCount=10000000
+
+	inc=(maxFreq-minFreq)/oscCount.to_f
+
+	freq=minFreq
+	while freq <= maxFreq
+		allFrequencies << make( Oscillator, [], :freq, freq )
+		freq+=inc
+	end
+
+Obviously this is very costly and will take a long time to render.
+
+You can do some experiments, but do we really need that many oscillators?
+
+	1. do we need oscillators outside the audible range?
+	2. how many oscillators do we need?
+
+In theory, we do need oscillators outside the audible range, because they still contribute to the overall sound.  In practice, you can do some experiments yourself and see if you can tell the difference.
+
+If you can't hear the difference yourself, then it doesn't matter.
+
+When doing oscillator banks like this, I only use audible frequencies.  Mainly from habit.
+
+I have found that a hundred oscillators is more than enough.  More than that and it's hard to hear any difference.  Even 30 gives a good approximation to white noise.
+
+
+PhaseOffset makes a difference.
+--------------------------------
+
+If you give all the oscillators the same phaseOffset (say 0.0), then at the start of the sound you get a very strange "wobble" effect.  The default for an oscillator is to make the phaseOffset random, so if you want the wobble, you will have to set it manually.
+
+
+Pink Noise
+-----------
+
+Pink noise is similar to white noise, but with a different frequency distribution of sounds.
+
+To get pink noise, make the following changes:
+
+	largeInteger.times{ | i |
+		freq=randomFreq( minFreq, maxFreq )									# not randomFloat()
+		allFrequencies[ i ]=make( Oscillator, [], :freq, freq )
+	}
+
+ or
+
+	minFreq=0.001							# very low (inaudible) frequency
+	maxFactor=30.0							# 2**30 is a very large integer
+	maxFreq=minFreq * 2**maxFactor			# possibly introducing rounding errors
+
+	oscCount=largeInteger
+	inc=2**(maxFactor/oscCount.to_f)		# inc is now a multiplier
+
+	freq=minFreq
+	while freq <= maxFreq
+		allFrequencies << make( Oscillator, [], :freq, freq )
+		freq*=inc
+	end
+
+
+ I tend to work with more reasonable extremes:
+
+	minFreq=30.0			# or even 40.0
+	maxFactor=6.0			# or even 5.0
+
+
+
+Variations on Noise
+--------------------
+
+If you use the same logic, except drastically reduce the number of oscillators, you get sounds that are not white or pink noise, but something else.  Depending on the values, you can get sounds like a drum  (narrow range of frequencies), or the sound of banging on a piece of metal (frequencies are spread out).
+
+eg
+
+	minFreq=randomFreq( 40, 256 )
+	maxFreq=randomFreq( 512, 1280 )
+	count=randomInteger( 5, 30 )
+
+	allFrequencies=Array.new
+	count.times{ | i |
+		freq=randomFloat( minFreq, maxFreq )
+		allFrequencies[ i ]=make( Oscillator, [], :freq, freq )
+	}
+
+eg
+
+	minFreq=randomFreq( 40, 256 )
+	maxFreq=randomFreq( 512, 1280 )
+	count=randomInteger( 5, 30 )
+
+	inc=(maxFreq-minFreq)/oscCount.to_f
+
+	freq=minFreq
+	while freq <= maxFreq
+		allFrequencies << make( Oscillator, [], :freq, freq )
+		freq+=inc
+	end
+
+
+.. and similarly like Pink Noise.
+
+
+
+Melody Notes: restarting :ctls 
+--------------------------------
+
+You can make sounds more interesting by placing ctls on them.  If you are creating notes to be used in a melody, then the ctls are placed on the source (say, an oscillator).
+
+If you want the change in sound to be the same for every note, then you need to restart the ctls on the note's source.
+
+Like this:
+
+	make(
+		Note,
+		[
+			[:make,
+				Oscillator,
+				[],
+					...
+				:ctl,	[:multiplier, .. ],	# pitch bend and vibrato
+				:ctl, [:vol, .. ],			# tremelo
+
+
+				:restartCtls, true			# false by default.
+
+
+			],
+
+			envelope
+		],
+
+
+		:startInput, true						# false by default
+
+		
+	 )
+
+The settings to notice are:
+
+	:startInput	 on Note.
+		If true, note will restart its source. (false by default)
+		(implemented by Channel)
+
+	:restartCtls on Oscillator
+		If true, osc will restart its own ctls. (false by default)
+		(implemented by Stopable)
+
+This is special behaviour, by default Note will NOT re-start its input, and a Stopable will NOT re-start its ctls.
+
+
+On the other hand, there is a setting on Oscillator (inherited from ShapeProgressor)
+
+	:startShape			# true by default.  re-start the shape if true.
+
+		a Shape will always restart its controls whenever its start() method is invoked.
+
+
+
+If you have a ctl which you don't want to restart (but you want all the others to restart), wrap it in a Channel, like this:
+
+		:ctl,
+			[:multiplier,
+				[:make, Channel,
+					[
+						pitchWander					# for example
+					],
+					:startInput, false			# Channel will restart, but pitchWander won't
+				]
+			]
+
+
+
+Another way to do it is to put a :trig on the note, to restart only specific ctls:
+
+eg
+
+	pitchBend=make( Envelope, ... )				# need to assign it to a ruby variable for this to work
+
+	note=make(
+		Note,
+		[
+			[:make, Oscillator, [],
+				:ctl, [:multiplier, pitchBend ]
+			],
+			envelope
+		],
+
+		:trig,	[ pitchBend, :start ]
+
+	 )
+
+Summary:
+
+	If you are interested in what happens when a note restarts, here is what you need to know
+
+	Note
+		:startEnvelope			true by default
+		:startInput				false by default
+
+	Oscillator
+		:startShape				true by default
+		:restartCtls			false by default
+
+	Channel
+		:startInput				true by default
+
+	Shape
+		will always (re)start its controls when start() is invoked
+
+	and just to be clear, restart() is exactly the same as start() for all Stopable.
+
+
+
+Delay
+------
+
+Delay makes a copy of a source's output, and delays it
+
+eg
+
+	make(
+		Delay,
+		[
+			source,
+			0.2				# the sound emerges 0.2 seconds after it originally emerged from source
+		]
+	 )
+
+There are a few things to understand:
+
+	1. Delay stores the sound in an internal memory array, so if you have A LOT of delays, it can fill up memory.
+
+	2. The size of the memory array is fixed, so if you are going to be changing the delay dynamically, you need to assign enough memory to hold the longest delay.
+
+		This is an optional third parameter, the maximumDelay (in seconds).  Defaults to 2 seconds.
+
+		eg
+			[:make, 
+				Delay, 
+				[ source, 0.2, 5.0 ], 			# need to account for max delay of 5 seconds
+				:ctl, 
+					[:delay, 
+						[:make, Oscillator, [], 
+							:minValue, 0.0, 
+							:maxValue, 5.0, 			# max delay is 5 seconds
+							:duration, 10.0 
+						]
+					]
+			]
+
+	3. Delay does not tick its input.
+
+		This is because typically you want to mix the original source with the delay.  The source is ticked anyway, the delay shouldn't tick it.
+
+
+ eg:
+
+	make(
+		Mixer,
+		[
+			source,									# source is ticked here
+			[:make, Delay, [ source, 0.2 ] ]		# don't want to tick source again
+		]
+	 )
+
+
+Echo
+------
+
+Delay on its own is not particularly interesting.  Better to use Echo
+
+Echo is like delay, but feeds back into itself.
+
+The output from Echo is a delayed mix of the source and the echo output from before.
+
+eg:
+	make(
+		Echo,
+		[
+			input,
+			0.2			# the delay
+		],
+		:inputVol, 0.8		# the volume that the input has in the mix going in
+		:feedbackVol, 0.5	# the volume that the echo output has in the mix going in
+	 )
+
+
+When a sound occurs in the input, it goes into the echo's memory, at the inputVol, to be replayed later.
+When a sound is output from the echo, it goes into the echo's memory, at the feedbackVol, to be replayed later.
+
+At every moment, what is going into the echo's memory (to be replayed later) is:
+
+	( input.out * inputVol + echo.out * feedbackVol )/2.0
+
+(Actually, even though I've written input.out and echo.out, the left and right channels are used, independently)
+
+Both inputVol and feedbackVol can be between 0.0 and 1.0
+
+
+A high value for inputVol means the echo starts out louder
+A high value for feedbackVol means the original sound (from the input) will repeat more times before fading away.
+The delay value determines how long between each repeat of the original sound
+
+Typically, you would mix the original sound with the echo, like this:
+
+
+	make(
+		Mixer,
+		[
+			source,
+			[:make, Echo, [ source, 0.2 ] ]
+		]
+	 )
+
+
+A more interesting application is to vary volume on the echo and the source.
+But, you want the echo to have the source at full volume.
+
+eg:
+
+	make(
+		Mixer,
+		[
+			[:make,
+				Channel,
+				[
+					source
+				],
+				:ctl, [ :vol,   [:make, RampStream, [ 0.5, 1.0 ] ] ]
+			],
+			[:make,
+				Echo,
+				[
+					source,
+					delayTime
+				],
+				:ctl, [ :vol,   [:make, RampStream, [ 0.5, 1.0 ] ] ]
+			],
+		]
+	 )
+
+When the echo is loud, but the source is faint, it sounds like the source is far away.
+When the source is loud, but the echo is faint, it sounds like the source is very close.
+By varying the volume on both the source and the echo, it sounds like the source is moving in and out.
+
+
+
+EvalGen and SpecGen
+--------------------
+
+Here is something really strange, and if you can wrap your head around it, it will give you some really powerful capabilities for creating objects on the fly.
+
+
+EvalGen < Generator
+
+	EvalGen.new( cmd="" )
+
+	nextValue()
+		eval( @cmd )
+
+Seems simple enough, it has a string @cmd, and it evaluates that string to give the next value
+
+Methods
+	_eval( cmd )		does eval( cmd ) in the context of the EvalGen object
+
+Here are the setable keys:
+
+	:eval,	string,	# evaluate string
+	:cmd,		string	# sets the value of @cmd
+
+
+The thing to understand (for people with a good understanding of ruby) is that the evaluations are done in the context of the Generator.
+
+That means that you can access (and create) instance variables.  You can also create instance methods.
+
+For example:
+
+	x=make(
+		EvalGen,
+		[ "@a" ],
+		:eval,
+			"
+				trace \" setting up some stuff \"				# don't forget to escape the strings
+				@a=5
+
+				def b=( value )
+					@b=value
+					@a+=value
+				end
+			",
+		:eval, 
+			"
+				self.b=( 5 )		# need to make it clear it's a method, not a local variable assignment
+				trace @b
+			"
+	 )
+
+	trace x.nextValue			# writes 10 to stderr
+	x.b=2
+	trace x.nextValue			# now, it's 12.
+
+
+Another example
+
+	# a function defined outside any class, yet it references instance variables !!!
+	def _initialiseEvalGen()
+		@a=6
+		def a=( value )
+			@a=value
+		end
+		def a()
+			@a
+		end
+	end
+
+	x=make(
+		EvalGen,
+		[ "@a+=1" ],
+		:eval,	"_initialiseEvalGen()"		# the instance variables now have a context
+	 )
+
+	trace x.nextValue		# returns 7
+	trace x.nextValue		# returns 8
+
+	x.a=100		# defined by _initialiseEvalGen()
+
+	trace x.nextValue		# returns 101
+	trace x.nextValue		# returns 102
+
+
+
+SpecGen < EvalGen
+
+	like EvalGen, except that nextValue() will  speculate( @cmd )
+
+eg:
+
+	oscBuilder=SpecGen.new( [:make, Oscillator, [], :freq, [:random, :freq, 128.0, 512.0 ] ] )
+
+	osc0=oscBuilder.nextValue		# a new oscillator
+	osc1=oscBuilder.nextValue		# another new oscillator
+
+	# notice that you can't use make() here, because [:make, Oscillator.. ] would get evaluated straight away.
+	#   You want the ruby array to get assigned to the Generator in its raw form.
+
+	# an alternative solution is to use the Speculate command [:lit  (see below)
+	# [:lit  prevents speculation of its arguments, so in fact you can do the following:
+
+	oscBuilder=make(
+		SpecGen,
+		[
+			[:lit,
+				[:make, Oscillator, [], :freq, [:random, :freq, 128.0, 512.0 ] ]
+			]
+		]
+	 )
+
+
+eg:
+
+	eventBuilder=SpecGen.new(
+		# this is just a ruby array. It gets stored in the SpecGen, and is re-evaluated whenever nextValue() is invoked.
+		[:make,
+			Fader,
+			[
+				[:make, Oscillator, [], :freq, [:random, :freq, 128.0, 512.0 ] ],
+				[:random, :freq, 0.2, 2.0],			# total duration
+				0.1, 0.1										# fadein and fadeout
+			]
+		]
+	 )
+
+	mix=make( 
+				Mix, 					# not Mixer.  see comment below.
+				[], 					# nothing in it for now
+				:ceiling, 0.5, 
+				:removeInputOnComplete, true, 		# remove an input if it completes
+				:stopOnInput, false						# don't stop just because there's nothing going on
+			 )
+
+	addToMix=make(
+		Occasional,
+		[ 
+			[:make, RandomFreq, [ 0.5, 2.0 ] ] 		# between 0.5 and 2 seconds, but biased towards shorter durations
+		],	
+
+		:tickedBy,	mix,									# mix is the obvious choice to tick this Occasional
+
+		:trig,
+			[ mix, :add, eventBuilder ],				# eventBuilder makes a new Fader, which gets added to the Mix.
+
+		:doTriggers											# add one event to start off with
+	 )
+
+	# whilst mix is playing, new oscillator events will get added every 0.5 to 2 seconds.
+
+	# because it is a Mix, you won't get abrupt changes in volume, as you would if you were using Mixer.
+	#  Mixer's output is an average, so whenever you change the number of inputs, you get a sudden change in volume.
+
+
+
+Some new Speculate commands
+-----------------------------
+
+These will be useful with SpecGen
+
+:eval
+
+	evaluate a string, in the context of the Speculate object.
+
+	eg
+		[:eval, "@a=10" ]
+
+:do
+
+	evaluate a list of commands, and return the value of the last one
+
+	eg
+
+		[:do,
+			[:eval, "@freq=128.0 if @freq.nil?" ],
+			[:make, Oscillator, [], :freq, [:eval, "@freq*=1.1" ] ]
+		]
+
+:lit
+
+	prevent speculation of the argument
+
+	eg
+
+		[:lit, [:random, :float, 0.0, 1.0] ]
+
+	instead of calculating a random float, just return the array [:random, :float, 0.0, 1.0]
+
+
+Times
+------
+
+Here is something you might find useful for building patterns of specific length:
+
+Times < Channel
+ plays an event a set number of times, then stops
+
+	Times.new( max, event )
+		max is the number of times to play the event
+		event is the @input
+
+setable:
+	:max, i				# set the number of times in total
+	:count, i			# set the counter, which keeps track of how many times have already played
+	:input, event		# sets the event being played
+
+
+
+$tickcount
+------------
+$tickcount is a global variable that is incremented by each Tickable object whenever it ticks.
+
+Output reinitialises the $tickcount, and if it has changed from the last time, writes the value to the logfile.
+
+In the previous album, we were using continuous sources, so $tickcount only rarely changed, but with the introduction of Stopables, $tickcount is likely to change often (depending on the event density).
+
+There is a correlation between $tickcount and the time it takes for a soundfile to render, so if you are finding the soundfile takes too long to build, you might look for the $tickcount values in the logfile to see what the values are.  This will give you an idea of how many active Tickables you can have to get the soundfile to render in a  "reasonable" amount of time.  For me, a $tickcount of less than a hundred is "quite fast".  I occasionally encounter tickcounts of 3000 or more.  Those are the soundfiles that take days to render.
+
+If you are using Sample to capture a sound event, then the $tickcount cost of the entire event will be recorded in the logfile, but will happen over a single tick.  In that case your $tickcount could easily be several million.  The $tickcount is still a good proxy for elapsed computing time, since the script will "hang" at that point whilst the sound event is captured.
+
+Personally, I don't mind too much if a soundfile takes a couple of days to render.  It costs what it costs.  If you want the sounds to happen in real time, SnM Sound and Music Engine is not for you.
+
+As someone with experience composing, practicing, recording and producing music, I can assure you that SnM still manages to get from inspiration to final product just as fast as doing it by hand.  And once the script is ready, I can leave it running in the background whilst I go off and get on with my life.
+
+
+
+The Album
+-----------
+
+I wrote the script incrementally over a three week period.  I started with the script 202101.source, which I had used to create the previous album.  First, I factored out all the useful stuff to external load files.  Then I added in Note capabilities, and went from there.  I went through about 45 intermediate versions until I ended up with the version you see in the release.
+
+The structure of each piece is  A B A C A.  B and C are one minute each.  A is 10 seconds. There are cross-fades between each section.  The cross-fades are of random duration.
+
+I introduced the concept of a budget, to limit the rendering costs.  The budget gets passed along with the rest of the hints (see notes to previous album), and whenever the available budget gets too low, more expensive options get eliminated from the various "menus".
+
+At first, I doubted that I could do the entire album from a single script, but eventually I figured out a way to do it.  My concern was that there were too many different possibilities and combinations to manage.  If you throw everything in like a stew, then what happens is all the tracks end up sounding pretty much the same.  I ended up using hints and generators.  Each section had contrasting hints and its own set of stream generators.  Each generator was then given the hints for the corresponding section.  This approach meant that not only did each section sound different, but each piece ended up with its own distinctive sound.
+
+There were a number of techniques that I didn't end up using.  In particular, I didn't explore rhythms, repeating sequences or "resonance" in the form of audible-frequency controls.
+
+Once the final version of the script was completed, it took about four days to render the album, using a $300 laptop I bought second hand a few years ago.  The rendering happens on its own.  No hand-holding is neccessary.
+
+You can hear the album on bandcamp.com: https://fakemusic2020.bandcamp.com/album/2-the-event
+
+
+Next up, Harmony.
+
