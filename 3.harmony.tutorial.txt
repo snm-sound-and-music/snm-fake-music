@@ -1,0 +1,1185 @@
+
+Welcome to the third module in the fake.music and SnM blog.
+
+
+
+Module 3.  Harmony
+=============================================================
+
+The plan for this album is:
+
+   About 40 minutes of sound. (Standard length for an LP record)
+
+   Each track a few minutes long.
+
+   Use the harmonic series to create nice sounds, regular compound rhythms, and musical-sounding melodies
+
+
+Let me show you how to do that..
+
+
+
+Integers and Arithmetic
+-------------
+
+Obviously, to a programmer, the concept of integer arithmetic has a special meaning.  For example in ruby,
+	4 / 3  is 1, not 1.33333
+
+In this module, I will talk about integer arithmetic, but what I really mean is floating point arithmetic, where one of the values is the floating point representation of an integer.
+
+So, in the previous example,
+
+	4.0 / 3.0
+
+
+Integers in Music
+-------------------
+
+There are three areas I want to cover in this module.
+
+	1. The use of the harmonic series to construct sounds
+
+	2. The division of time intervals to create bars, beats and pulses
+
+	3. The use of the harmonic series to construct musical intervals, harmonies and scales.
+
+
+
+Fake.Music
+------------
+
+Remember how I claim that in fake.music, I don't use any musical theory?
+
+Well, I don't.
+
+Integer arithmetic is a mathematical concept, and also a computing concept.  I can divide and multiply by integers without that being specifically musical.  So long as I avoid values that have no meaning other than in music, I'm in safe territory.  (So a pitch of 440.0 is not okay.)
+
+I don't think anyone would claim that small integers like, say in the range 1-10, are anything other than ordinary mathematics.  Even the range of 1-25 would seem okay.  Even better would be if I stick to prime numbers.
+
+Here is another way to look at it.
+
+If I have a length of string, and I divide it in half, that's just measurement.  If I divide it into thirds, that's still just measurement.
+
+If I have a guitar string, and find the mid-point, I'll find a harmonic at that point.  This is not culturally
+ dependent, it's just the physical property of a tight string.  It comes directly from the nature of matter itself, from the properties of physics.  Similarly, I'll find harmonics at the point where the string is divided by three, by four, by five and so on.
+
+On my nylon string guitar, on the lowest E string, I can easily get clear harmonics up to the 9th (an F#). (With  harmonics, there is some confusion about whether the counting is 0-indexed or 1-indexed.  I don't really care)
+
+As it turns out (I'm sure there's a scientific explanation for it, I just don't know what it is), the frequency you get when you divide the string in half is the open-string frequency multiplied by 2.
+
+The pitch you get when you divide the (length of the ) string by three is the open-freqyency times 3.  .. and so on.
+
+So in computing terms, all you need to do to get the harmonics of any given pitch is just multiply that pitch by 2.0, 3.0, 4.0 .. and so on.
+
+Now it also turns out that these harmonics have musical names.  (Roughly speaking).
+
+So multiply a pitch by 2.0 is called an octave.
+Multiply by 3.0 is called a perfect 5th.
+By 4.0 is another octave. ( 4.0 = 2.0*2.0, which is an octave of an octave )
+By 5.0 is a major 3rd.
+By 6.0 is another perfect 5th ( 6.0 = 3.0*2.0, which is an octave of a perfect 5th ).
+By 7.0 is a minor 7th.
+By 8.0 is another octave.
+By 9.0 is a tone ( 9.0 = 3.0*3.0, which is a perfect 5th of a perfect 5th ).
+By 10.0 is another major 3rd.
+By 11.0 is ... there is no name for that pitch.
+
+So the first 10 harmonics (or so) all have musical names, which is rather interesting, but not surprising.
+
+Let's think of it in terms of evolution of the species.
+
+Way way way back, life (so they say) began with very primitive organisms living near the sea-shore.  Those that developed particular senses had a better chance of survival.  
+
+One useful sense is the ability to detect vibration. Lots of vibration might signal a storm, or maybe just the waves at low tide.  If the creature (a shellfish, say) clamped up when it detected lots of vibration, and opened up to feed when there wasn't a lot of vibration, that would increase its chance of survival.
+
+The ability to detect vibration is the beginning of the sense of hearing.
+
+Fast forward a bit, and you have creatures with a sense of hearing.  They are moving about in their environment, and they are trying to make sense of the continuous barrage of sound that is impacting them at all times.
+
+Making sense of the sound means identifying individual sounds.  But what does that mean, an individual sound?
+
+In part it means a sudden change in volume.  A sound event.  But in part it also means knowing that a collection of different frequencies is actually all the same sound.
+
+If you study the human ear, the inner ear acts as a mechanical frequency analyser.  The different frequencies activate different areas of the inner ear, and the activation is converted into electrical signals that then travel through the nerves.  Since any sound from the environment is likely to contain all the harmonic frequencies, it stands to reason that the structure of the nerves will include also the detection of frequencies that "belong together naturally".
+
+The frequencies in a harmonic series "belong together naturally", meaning that a sound made in nature will tend to also include all those frequencies.  Thus a sound that contains all those frequencies will be perceived as just one sound.  The creature that hears such a sound knows that it is just one sound and not many different sounds.  If you are trying to assess possible threat, this means there is only one possible threat, not a dozen or so.  This is somewhat re-assuring, to say the least.
+
+Can you see the argument I'm trying to make?
+
+I'm saying that frequencies in the harmonic series, due to the inherent properties of the physical world, combined with hundreds of millions of years of evolution, sound safer.  They are easier to deal with because, in a sense, they convey less information.  This is why they sound nicer, more peaceful, more pleasant, more comforting, more musical.  This is what is meant by harmony.
+
+Coming back to fake.music, and my quest for using "non-musical processes to create what sounds like music", this idea is based on the belief that our appreciation of "music" derives naturally from the physics of the material world, and the way we interact with it (or more correctly, how species have interacted with it over the last several hundred million years).  Music theory is just a tiny layer of rationalisation applied over the top.  We don't enjoy music because of music theory.  Rather music theory is derived from the fact that we appreciate sound.
+
+So, the harmonic series...
+
+
+
+1. The use of the harmonic series to construct sounds
+=========================================================================================
+
+In previous modules, I showed how, in the SnM Sound and Music Engine, you can create a Mixer of Oscillators.
+
+You can construct a harmonic series like this:
+
+	baseFreq=randomFreq( 40.0, 128.0 )
+	vol=1.0
+	volDec=randomFloat( 0.8, 0.95 )
+	oscs=Array.new
+	randomInteger( 6, 15 ).times{ | i |
+		freq=baseFreq*(i+1).to_f			# the harmonic series, represented by i+1
+		oscs[ i ]=make( 
+			Oscillator, 
+			[], 
+			:freq, freq,
+			:vol,  vol
+		 )
+		vol*=volDec							# decrease volume as frequency gets higher
+	}
+	make(
+		Mixer,
+		[ oscs ]
+	 )
+
+You get a more "natural" sound if you decrease the volume for the higher frequencies.  Again, it's the physics that determines this.
+
+
+
+Even, Odd and Prime Harmonic Series
+----------------------------
+
+If you use only the even numbers, you get a different kind of sound.  (1.0 is still in the series, because that's the "fundamental" tone).
+Similarly, if you use only the odd numbers.
+Similarly, if you use only the prime numbers.
+
+I will leave it as an exercise for the reader to figure out how to code that.
+
+(Or you can find it in my source code)
+
+
+
+Mixer of Notes
+---------------
+
+Once you have constructed your harmonic mix, you can wrap it in an envelope to create a Note:
+
+	make(
+		Note,
+		[
+			[:make, Mixer, [ oscs ] ],
+			makeEnvelope()
+		]
+	 )
+
+However, you can get an even more interesting sound if you wrap each oscillator in a note:
+
+	notes=Array.new
+	oscs.each{ | osc |
+		notes[ i ]=make(
+			Note,
+			[
+				osc,
+				makeEnvelope()
+			]
+		)
+	}
+	make(
+		Mixer,
+		[ notes ]
+	 )
+
+(I am assuming here that each oscillator gets a different envelope.  That way the sound changes over time)
+
+
+
+Overtones
+----------
+
+The word Overtone is sometimes used to just mean a harmonic, but it can also mean a frequency that is in a natural sound, but which is NOT a harmonic.
+
+You can create interesting sounds by starting with the harmonic series, but shifting some (or all) of the frequencies slightly sharp or flat.
+
+
+	baseFreq=randomFreq( 40.0, 128.0 )
+	vol=1.0
+	volDec=randomFloat( 0.8, 0.95 )
+	notes=Array.new
+	randomInteger( 6, 15 ).times{ | i |
+		freq=baseFreq*(i+1).to_f
+		osc=make( 
+			Oscillator, 
+			[], 
+			:freq, freq,
+			:vol,  vol,
+
+		# detune slightly
+		# -----------------
+			:multiplierMode,	:factor,
+			:multiplier,		[:random, :float, -0.02, 0.02 ]
+
+		 )
+		notes[ i ]=make(
+				Note,
+				[
+					osc,
+					makeEnvelope()
+				]
+			 )
+		vol*=volDec
+	}
+	note=make(
+		Mixer,
+		[
+			notes
+		]
+	 )
+
+
+
+
+
+2. The division of time intervals to create bars, beats and pulses
+=========================================================================================
+
+Lets shift attention from pitch and focus on duration for a bit.
+
+Take an arbitrary duration, of a few seconds or less.  Let's call that barLen, for no particular reason.
+
+Then divide that by a small integer (or the float equivalent of an integer).  Let's call that beatLen.
+
+Now create two streams, one plays notes that are barLen long, the other plays notes that are beatLen long.
+
+make(
+	Mixer,
+	[
+		[:make,
+			Stream,
+			[
+				[:make, 
+					Note, 
+					[ osc0, env0 ], 
+					:duration,				barLen, 
+					:trigme,				[:pitch, melody0 ] 
+				]
+			]
+		],
+		[:make,
+			Stream,
+			[
+				[:make, 
+					Note, 
+					[ osc1, env1 ], 
+					:duration,				beatLen, 
+					:trigme,				[:pitch, melody1 ] 
+				]
+			]
+		]
+	]
+ )
+
+This is a simple way to get a tune with a bar containing a fixed number of beats.
+
+
+Bar Accents
+---------------
+You can add accents, to make the division more obvious:
+
+	barLen=randomFloat( 1.0, 2.0 )
+	bpb=randomInteger( 3, 6 )			# beatsPerBar
+	beatLen=barLen/bpb.to_f
+
+	beatAccents=Array.new
+	bpb.times{ | i |
+		if i==0
+			beatAccents[ i ]=1.0
+		else
+			beatAccents[ i ]=0.7
+		end
+	}
+	beatAccents=make( SequenceGenerator, [ beatAccents ] )
+
+	beatStream=make(
+			Stream,
+			[
+				[:make, 
+					Note, 
+					[ osc1, env1 ], 
+					:duration,				beatLen, 
+					:trigme,				[:pitch, melody1 ],
+					:trigme,				[:vol,   beatAccents ]
+				]
+			]
+	 )	
+
+
+Bar Envelope
+--------------
+Or, instead of accents, you can overlay a volume envelope with a length of barLen
+
+	stream.ctl[ :vol ]=make( 
+		Oscillator, 
+		[ Triangle.new( 0.0 ) ], 		# highest value at the start of the bar
+		:phaseOffset, 0.0,				# so it aligns with the bar start
+		:minValue, 0.3, 				# never quite gets to zero volume
+		:duration, barLen
+	 )
+
+
+You can further divide the beat into pulses
+----------------------------------------------
+
+	ppb=randomInteger( 2, 3 )		# pulsesPerBeat
+	pulseLen=beatLen/ppb.to_f
+
+	pulseAccents=Array.new( bpb*ppb, 0.5 )			# initialise with soft volume
+
+	# now make the on-beat volumes louder
+	bpb.times{ | i |
+		if i==0
+			beatAccents[ i*ppb ]=1.0
+		else
+			beatAccents[ i*ppb ]=0.7
+		end
+	}
+	pulseAccents=make( SequenceGenerator, [ pulseAccents ] )
+
+	pulseStream=make(
+			Stream,
+			[
+				[:make, 
+					Note, 
+					[ osc2, env2 ], 
+					:duration,				pulseLen, 
+					:trigme,				[:pitch, melody2 ],
+					:trigme,				[:vol,   pulseAccents ]
+				]
+			]
+	 )	
+
+
+You might find this produces pulses that are too short.  You could start at the other end:
+
+	pulseLen=randomFreq( 0.1, 0.2 )
+	ppb=randomInteger( 2, 3 )
+	beatLen=pulseLen*ppb.to_f
+	bpb=randomInteger( 3, 6 )
+	barLen=beatLen*bpb.to_f
+
+
+
+You don't have to always have the same number of divisions per bar
+------------------------------------------
+For example:
+
+	stream=make(
+		Stream,
+		[
+			note
+		]
+	 )
+
+	noteLens=Array.new
+	11.times{ | i |
+		noteLens[ i ]=barLen/(i+2).to_f
+	}
+
+	beatLenChange=make(
+		Occasional,
+		[ barLen ],
+		:trig, 		
+			[ note, :duration, [:make, FromList, [ noteLens ] ] ],			# change the noteLen every bar
+		:tickedBy,	stream
+	 )
+
+To get a stronger sense of the bar length, you can overlay a volume envelope:
+
+	stream.ctl[ :vol ]=make( 
+		Oscillator, 
+		[ Triangle.new( 0.0 ) ], 		# highest value at the start of the bar
+		:phaseOffset, 0.0,				# so it aligns with the bar start
+		:minValue, 0.3, 				# never quite gets to zero volume
+		:duration, barLen
+	 )
+
+
+Emphasise bar structure in controls
+-------------------------------------
+
+Once you have a bar/beat/pulse structure, you can reinforce those lengths in any controls:
+
+eg:
+	osc.multiplierMode=:factor
+	osc.ctl[ :multiplier ]=make( 
+			Oscillator, [], 
+			:minValue, 0.0, :maxValue, 0.01, 
+
+			:duration, pulseLen * 0.5		# <----------
+	 )
+
+eg:
+	echo.delay=beatLen				# <----------
+
+eg:
+	shape=make(
+		Triangle,
+		[],
+		:ctl,
+			[ :apex,
+				[:make, 
+					Oscillator, [], 
+					:minValue, 0.0, 
+
+					:duration, barLen * 2.0 		# <----------
+				]
+			]
+	 )
+
+
+Interesting Rhythms
+---------------------
+Those examples give rhythms where every note is the same length.  There are some easy ways to make more interesting rhythms.
+
+For example..
+
+
+Note/Rest Stream
+-----------------
+The easiest way to construct a rhythm is to use notes that are all the same length, but make some of them rests.
+
+This can be done using the melody, since a value of 0.0 as pitch will cause the note to be silent.  (It will still cost the same, though).
+
+eg: a melody where rests happen randomly
+
+	melodyGen=someMelodyGenerator()
+	melody=make(
+		ProbPair,
+		[ 
+			melodyGen, 							# generates the notes
+			0.0, 								# generates the rests
+			randomFloat( 0.5, 0.8 ) 			# probability of generating a note
+		],
+		:reTrigger, true
+	 )
+
+
+eg: a repeating pattern of notes and rests
+
+	melodyGen=someMelodyGenerator()
+	melody=make(
+		SequenceGenerator,
+		[
+			[ melodyGen, melodyGen, 0.0, melodyGen, 0.0 ]	# note, note, rest, note, rest
+		]
+
+
+The advantage of a this kind of note/rest stream is that you can still use the same accent generators.
+The melody generator melodyGen is only invoked when there is an actual note to play.
+
+You can get interesting cross-rhythms by mixing together two note/rest streams.
+
+
+Variable Length Rhythm
+------------------------
+
+This is harder because 
+
+	1. it's not clear what bar accents should be used.
+	2. the rhythm might not align with the bar divisions
+			(which means you won't have as much flexibility with swapping blocks of notes in and out)
+
+eg
+	rhythm=make(
+		FromList,
+		[
+			[ beatLen, beatLen*2.0, beatLen*3.0 ]
+		]
+	 )
+
+This adds an added level of interest, because it can create occasional syncopation.
+
+Concerning bar accents, one solution I use is to just assign random volumes as accents and trust that the other voices will provide a clear enough sense of the bar structure.
+
+	accents=make( RandomFloat, [ 0.4, 1.0 ] )
+
+
+However, in terms of the rhythm, usually you want to play short notes more often than long notes, which means using FromWeightedList:
+
+	rhythm=make(
+		FromWeightedList,
+		[
+			[ beatLen, beatLen*2.0, beatLen*3.0, barLen ],
+			[ 8,       2,           0.5,         1      ]
+		]
+	 )
+
+
+You can force a rhythm pattern into a fixed number of bars by keeping track of the total length:
+
+	lens=Array.new
+	totalLen=0.0
+	while totalLen < barLen*4.0			# phrase will be 4 bars long.
+
+		len=chooseWeighted( beatLen, 8, beatLen*2.0, 2, beatLen*3.0, 0.5, barLen )		# random note length
+
+		len=barLen*4.0 - totalLen if totalLen+len > barLen*4.0		# correction for overshoot
+
+		lens << len
+		totalLen+=len
+	end
+
+	rhythm=make( SequenceGenerator, [ lens ] )
+
+You can also construct a phrase that is somewhat short of the total length, and then pad out the remainder with silence.
+
+
+Short Notes, then Long
+-----------------------
+A natural-sounding rhythmic pattern for a phrase is to play lots of short notes, then play some long notes
+
+	shortLens=make( NewFromList, [ beatLen, beatLen*2.0 ]
+	longLens=make( FromList, [ beatLen*3.0, barLen ] )
+
+	rhythm=make( 
+		ValueGenerator,			# will provide the current note length
+		[],						# don't have a generator yet
+		:autoUpdate, false
+	 )
+
+	# for when short notes are playing, this will update the note length from time to time
+	shortLenCtl=make(
+		Occasional,
+		[
+			[:make, RandomFloat, beatLen*3.0, beatLen*5.0 ]
+		],
+		:trig, [ rhythm, :update ]
+	 )
+
+	# stream of notes that uses the rhythm (which hasn't been initialised yet)
+	noteStream=make(
+		Stream,				# stream will start and stop, see streamCtl, below
+		[ note ],
+		:trig, [ note, :duration, rhythm ]
+	 )
+
+	# this controls how the note lengths are generated over the life-cycle of the phrase
+	# it also makes the stream stop when it gets to the end of 8 bars.
+	streamCtl=make(
+		Sequence,			# 8 bars in total
+		[
+
+			# five bars or more of short notes
+			[:make,
+				Duration,
+				[ barLen*5.0 ],
+				:ticks,	shortLenCtl,							# so the note lengths vary occasionally
+
+				:trig, [ rhythm, :generator, shortLens, false ],# sets up rhythm to play short notes
+				:trig, [ rhythm, :autoUpdate, false ],			# keep the note length the same until shortLenCtl changes it.
+
+				:trig, [ noteStream, :start ],					# makes the stream start playing (initialises noteLen)
+				:trig, [ noteStream, :repeats, true ],			# makes the stream keep playing
+
+			],
+
+			# long notes for two bars or more
+			[:make,
+				Duration,
+				[ barLen*2.0 ],
+				:trig, [ rhythm, :generator, longLens, false ],	# now plays long notes
+				:trig, [ rhythm, :autoUpdate, true ]			# and chooses a new note length each time
+			],
+
+			# allow one bar for the last note to complete
+			[:make,
+				Duration,
+				[ barLen ],
+				:trig, [ noteStream, :repeats, false ]			# causes stream to end after current note stops
+			]
+		]
+	 )
+	
+	phrase=make( Duration, [ barLen*8.0, noteStream ] )		# pads noteStream with silence at the end
+	phrase.ticks( streamCtl )
+
+
+Rhythm doesn't need to conform to pop music expectations
+---------------------------
+
+For example,
+
+	change beatsPerBar from time to time
+
+		whilst keeping barLen the same
+		or, whilst keeping beatLen the same
+
+	overlay different voices, which use the same barLen, but different beatsPerBar
+	overlay different voices, which use the same beatLen, but different beatsPerBar (and bar accents)
+
+
+
+
+
+3. The use of the harmonic series to construct musical intervals, harmonies and scales.
+=========================================================================================
+
+The harmonic series can be used to construct harmony and melody.
+
+Keep in mind that if you have a base frequency  `freq', and a floating point multiplier `interval', then
+
+	freq  ->  freq * interval
+
+	is always the same interval, irrespective of the value of freq.
+
+In other words, the ear always hears   freq -> freq*interval  as the same relative change in pitch, irrespective of the starting frequency.
+
+Because of the way our ears have evolved to perceive sound over billions of years, it turns out that certain intervals are so "natural" that they inevitably turn up in music theory.  These intervals are all based on the harmonic series, which is just the positive integers.
+
+So:
+
+	freq * 1.0		obviously, the pitch doesn't change
+
+	freq * 2.0		up an octave
+	freq / 2.0		down an octave
+
+	freq * 3.0 / 2.0	up a perfect fifth
+	freq / 3.0 * 2.0	down a perfect fifth
+
+	freq / 3.0 * 4.0	up a perfect 4th
+	freq * 3.0 / 4.0	down a perfect 4th
+
+	freq * 5.0 / 4.0	up a major 3rd
+	freq / 5.0 * 4.0	down a major 3rd
+
+	freq / 5.0 * 8.0	up a minor 6th
+	freq * 5.0 / 8.0	down a minor 6th
+
+	freq * 7.0 / 4.0	up a minor 7th
+	freq / 7.0 * 4.0	down a minor 7th
+
+	freq * 9.0 / 8.0	up a whole tone
+	freq / 9.0 * 8.0	down a whole tone.
+
+	
+Keep in mind that these intervals are the "true" natural intervals that arise from the harmonics.  They will not correspond to, say, equal-tempered or well-tempered tunings.  They will, however, be close.
+
+Also note that 8.0/7.0 is not the same as 9.0/8.0, even though I have labelled them with the same musical equivalent of up a whole tone.
+
+Also note that
+
+	4.0 / 3.0 is a perfect fourth (eg C -> F )
+	5.0 / 4.0 is a major third (eg F -> A )
+
+so
+	4.0 / 3.0 * 5.0 / 4.0	is ( C -> F -> A )
+	
+or, reducing the equation
+	5.0 / 3.0 	is a major 6th ( C -> A )
+
+inverting this interval gives
+	3.0 / 5.0 * 2.0	minor 3rd ( A -> C )
+
+
+Let's work it through methodically, starting with the smallest integers.
+
+Keep in mind
+
+	an interval is just any floating point number, which is multiplied by a base frequency to get a new pitch
+
+To get the musical inversion of the interval, divide by the interval instead of multiplying.
+
+
+
+1.0 is unison
+----
+
+2.0 is an octave
+----
+
+If you have an arbitrary interval, you can bring it back to a given octave range by repeatedly moving up or down an octave in the appropriate direction.
+
+	interval * 2.0		is the same interval, but an octave higher
+	interval / 2.0		is the same interval, but an octave lower
+
+I can't think of any non-musical reason to want to do this, but for the rest of the discussion, I will assume that we always bring intervals back to an octave range (sometimes the lower octave).
+
+Maybe it just makes the implementation easier, because we can always assume we are working with intervals in the range 1.0 to 2.0 .
+
+
+
+3.0 is a perfect fifth
+-------
+
+Actually 3.0/2.0, because we bring it back to the octave.
+
+The inverse is a perfect 4th.  (Actually 4.0/3.0)
+
+So just by using the first three integers, we can get the tonic, the dominant and the subdominant.
+
+	I  tonic		1.0
+	IV subdominant	2.0*2.0/3.0
+	V  dominant		3.0/2.0
+
+
+
+5.0 is a major 3rd
+-------
+
+(The inverse is a minor 6th.)
+
+So just by using the first 5 integers, we can get
+
+	a major triad
+
+		root			1.0
+		major 3rd		5.0/4.0
+		perfect 5th		3.0/2.0
+
+
+If we form a major triad on each of the notes of the tonic, the dominant and the subdominant, and then gather together all those notes:
+
+	(eg, with C as the tonic)
+
+	major triad on tonic		C E G
+	major triad on subdominant	F A C
+	major triad on dominant		G B D
+
+	All the notes
+		C D E F G A B
+
+In other words, using just the first 5 integers, we get all the notes of the major scale.
+
+It's remarkable how easily we can get a major scale using straight-forward integer arithmetic on the fingers of one hand.
+
+
+
+DiatonicScale
+--------------
+
+This is a class, subclass of Scale.
+
+For example
+
+	majorScale=DiatonicScale.new( :maj, :maj, :maj )
+
+The three arguments are saying to form a major triad on each of the tonic, subdominant and dominant notes.  The scale is then constructed from the collection of notes created.
+
+You can also specify :min to indicate form a minor triad.
+
+	a minor triad
+
+		root			1.0
+		minor 3rd		3.0/5.0*2.0
+		perfect 5th		3.0/2.0
+
+So,
+
+	naturalMinorScale=DiatonicScale.new( :min, :min, :min )
+
+		A B C D E F G
+
+In general, you can use either :maj or :min at each position, giving a number of unusual scales.
+You can also use :any, in which case the scale will randomly choose from :maj and :min at that position.
+
+There is a fourth argument, probMin, which gives the probability of choosing :min.  The default value is 0.5
+
+eg
+	randomDiatonicScale=make( DiatonicScale, [ :any, :any, :any, [:random, :float, 0.0, 1.0 ] ] )
+
+Why did I call this class DiatonicScale?  I dunno, I forget.
+
+You can get the EXACT major scale in 12-note equal tempered tuning by using
+
+	EqualTemperedDiatonicScale
+
+eg:
+
+	equalTemperedMajorScale=make(
+		EqualTemperedDiatonicScale,
+		[ 12, :maj, :maj, :maj ]
+	 )
+
+By using ShiftScale and EqualTemperedDiatonicScale, you get the set of jazz/rock modes.
+
+EqualTemperedDiatonicScale is a subclass of ClosestScale. ClosestScale takes two scales, and creates a third scale by finding the closest matching notes from one scale that correspond to the second scale.  
+
+ClosestScale can also be used to form nicely spaced chords within an arbitrary scale.
+
+
+
+7.0 is a minor 7th
+--------------
+
+This gives you a dominant 7th chord
+
+		root			1.0
+		major 3rd		5.0/4.0
+		perfect 5th		3.0/2.0
+		minor 7th		7.0/4.0
+
+Similarly, you can get a minor 7th chord ( 1 -3 5 -7 )
+
+		root			1.0
+		minor 3rd		3.0/5.0*2.0
+		perfect 5th		3.0/2.0
+		minor 7th		7.0/4.0
+
+Keep in mind that, although these simple integer calculations are giving very sweet sounding intervals and chords, they are not necessarily giving you coherent scales.  This problem has been known for thousands of years, and much of classical western music theory (and practice) has revolved around trying to find good compromises as tuning systems.
+
+In SnM and fake.music, I don't need to worry about consistent scales, because I can micro-tune each note as it's played.
+
+The various Scale classes I've implemented are consistent scales, but the chords resulting from those scales might not sound so good.  Also, there's no musical theory or existing practice to guide you in the best way to use some of those Scales.
+
+
+The inversion of 7.0 is a whole tone.  (But not as in the cycle of 5ths!)
+
+	whole tone		8.0/7.0
+
+
+
+9.0 is a whole tone
+-------------
+
+Since 9.0 = 3.0 * 3.0, this is actually part of the cycle of 5ths.
+
+	C -> D	 from	 C -> G -> D
+
+
+The inversion is a minor 7th.
+
+Notice that these are the same two musical names we get from 7.0, above.  They are not the same pitches.  They're close, but not the same.
+
+
+If you want a natural sounding 9th chord, I would recommend get the minor 7th using 7.0, and the 9th using 9.0.
+
+	9th chord
+
+		root			1.0
+		major 3rd		5.0/4.0
+		perfect 5th		3.0/2.0
+		minor 7th		7.0/4.0	(recommended)	or 16.0/9.0
+		9th				9.0/4.0	(recommended)	or 16.0/7.0
+
+
+
+Other intervals
+-----------
+
+You can play around yourself, devising different intervals.  
+
+For example, from the major 3rd, you can get an augmented 5th
+
+	augmented 5th		5.0*5.0/16.0
+
+
+
+You will find that there are unlimited ways to construct any musical interval by using the relationships of one interval to another.
+
+For example, one way to get a semitone:
+
+	25.0/16.0 * 2.0/3.0 		up an augmented 5th, then down a perfect 5th
+
+And another way:
+
+	3.0/5.0*2.0	* 8.0/9.0		up a minor third, then down a tone
+
+And another way:
+
+	3.0/2.0 * 5.0/3.0			up a major third, then down a minor third
+
+These are all different intervals, but they are all called a semitone.  Musical scholars have been aware of this for thousands of years.	
+
+The history of musical tuning systems has been the search for the best possible choices that lead to the sweetest sounding intervals for the style of music that the composer wants to write.
+
+
+
+Cycle of 5ths
+----------
+
+The cycle of 5ths is not truly a cycle, because it never returns to the same pitch.
+
+	C = 1.0 = 5.0**0
+	G = 5.0/4.0	= 5.0**1 / 2.0**2
+	D = 5.0**2 / 2.0**i  for some integer i
+	A = 5.0**3 / 2.0**i  for some integer i
+
+	 ..
+
+	C != 5.0**12 / 2**i for any integer i			It doesn't cycle. Ever.
+
+
+By using the first 12 notes from this cycle, (and ignoring all the rest) you get all the notes of the chromatic scale.
+
+If memory serves me correctly, this tuning was the basis for Gregorian chant and medieval music.  Maybe not.
+
+I believe this system of tuning is called Pythagorean Tuning.
+
+This tuning gives PERFECT perfect 5ths and 4ths, but the thirds are not so good.  In medieval music, 7ths were considered concords (nice-sounding), whereas 3rds were considered discords.  This is because with this system of tuning, 3rds really are discordant.  
+
+By the time of the renaissance, composers (and performers) were becoming interested in 3rds and 6ths, and so they started  experimenting with different ways of tuning the notes being used, in order to get better 3rds and 6ths.  The inevitable compromises meant that the 4ths and 5ths were not so good, which is why we now have the musical theory rule against having "exposed 5ths".  With Pythagorean Tuning, exposed 5ths are not a problem.
+
+
+One way of thinking of the cycle of 5ths is to see it as two parallel progressions of whole tone steps:
+
+	C   D   E   F#
+	| \ | \ | \ |
+	F   G   A   B
+
+
+
+BiPolarScale
+------------
+
+This scale builds on the idea of parallel progressions of whole tones, introduced above.
+
+You start with the tonic and the dominant notes.
+
+You then add zero or more tones above each of these notes, stopping if you hit the other note.
+Then, you backfill with whole tones below these two notes, stopping when you hit a note already in the scale.
+
+eg:
+
+	BiPolarScale.new( 3, 3 )
+
+To show this, let's assume we have C as the tonic:
+
+	start with the tonic and the dominant notes
+
+		C, G
+
+	add tones above each of these notes
+
+		two notes above C (the first argument is 3, three notes including the C )
+			C, D, E
+
+		two notes above G (the second argument is 3, three notes including the G )
+			G, A, B
+
+		backfill below G to fill in the gap
+
+			F
+
+	so our scale is
+
+		C, D, E, F, G, A, B
+
+
+I call this class BiPolar because it builds the scale from two points (poles), the tonic and the dominant.
+
+The two arguments are integers in the range 0, 4.  BiPolarScale will always return a 7-note scale, for any combination of arguments.
+
+
+Scales based on the Harmonic Series
+-------------------------
+
+You can construct scales directly from the harmonic series.  Just take a subset of the harmonic series, and bring all the harmonics back to the octave.
+
+HarmonicsScale
+---------------
+
+Uses the intervals generated by the harmonic series
+
+eg
+	make( HarmonicsScale, [ 5 ] )
+
+	gives a 3-note scale that is the notes of the major triad.
+	The harmonics used are 1.0, 3.0 and 5.0.
+	2.0 and 4.0 are just duplicates of 1.0 when they are brought back to the octave.
+
+
+InvertedHarmonicsScale
+----------------------
+
+Uses the intervals generated by the inversions of the harmonic series
+
+eg
+	make( InvertedHarmonicsScale, [ 5 ] )
+
+	gives a 3-note scale consisting of the tonic, the perfect 4th and the minor 6th
+	ie,  1.0, 4.0/3.0 and 8.0/5.0
+
+
+TwoWayHarmonicsScale
+---------------------
+
+Combines a HarmonicsScale and an InvertedHarmonicsScale
+
+eg
+	make( TwoWayHarmonicsScale, [ 5, 3 ] )
+
+	gives a 4-note scale, consisting of
+
+		1.0, 3.0 and 5.0 from HarmonicsScale.new( 5 )
+
+		and 4.0/3.0 from InvertedHarmonicsScale.new( 3 )
+
+
+BalancedHarmonicsScale
+----------------------
+
+This is a TwoWayHarmonicsScale, where both the arguments are the same
+
+eg
+
+	BalancedHarmonicsScale.new( 5 ) = TwoWayHarmonicsScale.new( 5, 5 )
+
+
+PartchScale
+------------
+
+Gives a scale based on fractions of numbers from the harmonic series
+
+eg
+
+	PartchScale( 5, 3 )
+
+	multipliers are 1, 2, 3, 4, 5
+	divisors are 1, 2, 3
+
+	so the final scale is:
+
+		1.0/1.0		C
+		3.0/1.0		G
+		5.0/1.0		E
+
+		1.0/3.0		F
+		5.0/3.0		A
+
+		(with each note brought back to the octave)
+
+
+Named in honour of Harry Partch, an American composer who devised a scale based on similar logic. (Except that he knew what he was doing).
+
+
+Modulations
+-------------
+
+Modulation can mean a change of key, like C Major to D minor.  Traditionally, you try to retain some notes from the old scale in the new scale.
+
+Modulation can also mean a transposition, like just move all the notes up by the same interval.
+
+I have not experimented much with key changes in SnM, due to the enormous number of possible scales, and also the fact that I'm not using a fixed keyboard (so the new scale might have notes that are just a micro-tone away from notes in the old scale).
+
+However, there are two devices that I use frequently:
+
+	1. change the tonic
+
+		any melody generator can be used to get the new tonic.
+		One that is particularly useful is:
+
+			make(
+				IntervalGenerator,
+				[
+					40.0, 80.0,			# the end-points are unimportant for key changes, so long as it's more than an octave
+					[:make, FromList, [ [ 3.0/2.0, 2.0/3.0, 9.0/8.0, 8.0/9.0 ] ] ]		# up or down a tone or a perfect 5th.
+				]
+
+		This gives you modulations to a new tonic that is either a perfect 5th up or down, or a whole tone.
+		
+		This generally works well, irrespective of what kind of scale you are using.  It's more about the size of the modulation than any actual musical relationship.
+
+	2. change the scale
+
+		I don't make any attempt to match notes up, I just choose some random scale, and change to it.
+
+The effect is really more like a change in texture or character.  I am not aiming for the kind of functional harmony effect that is achieved in classical music.
+
+The best way to do either of these devices is to use a Key.  Have all melody generators use that key.  In this way, all the melodies will auto-adjust whenever a modulation occurs on that key.
+
+Use either an Occasional, or a trig() on each Section, to do the actual key changes.
+
+eg:
+
+	:trig,
+		[ key, :tonic, newTonicGenerator ],
+	:trig,
+		[ key, :scale, newScaleGenerator ]
+
+
+There is no reason why all instruments need to be using the same key, the same scale or modulate at the same time.
+
+
+
+Structure
+============================
+
+I think of Structure as the way you keep a piece of music interesting by making the sound change over time.
+
+Now that we have introduced the concept of multiplying and dividing by integers, some new possibilities emerge.
+
+You can build contrasting sections based on
+
+	change in rhythmic patterns
+
+	contrast in barLength
+	contrast in beatLength
+	contrast in beatsPerBar
+
+	contrast in key / scale
+
+Even if your piece isn't organised into formal sections, you can still introduce these changes incrementally or occasionally, perhaps in different voices at different times.
+
+
+Sections as Structure
+-------------
+
+Another new concept is the ability to define section lengths in terms of barLen.  We can divide the barLen by integers to get a simple kind of time signature. But we can also get longer lengths by multiplying barLen by integers.  For example, a phrase length of barLen*8.0
+
+I find that the most satisfying section or segment lengths are those that are powers of 2.  I'm not sure whether that's intrinsic to our perception of sound, or whether it's just cultural.  Since a pattern of 2 is just a thing repeated, it may be hard-wired into our perceptual mechanism.
+
+Because of the way the bar is divided into beats and pulses, the possibility is (ignoring syncopation for the moment) that the bars, beats and pulses all end at the same point in time, so you can just splice one section onto another section seamlessly.  This is only possible because the beats and pulses are integer divisions of the bar.
+
+The above does not take into account the possibility of a sudden change in volume due to different instrumentation, which could cause a sound glitch.
+
+
+The problem with Echo
+----------------------
+
+Nor does it take into account echo, which would not end cleanly at the bar's end.  One solution for this is to give the echo in its own channel.  The echo channel continues after the voice that created the echo has ended.  Keep in mind that the echo will reproduce any sound glitch caused by the sudden ending of the input voice.  Echo in SnM does not work seamlessly in every circumstance.  You need to understand how it works and come up with solutions as appropriate, depending on what you want.  The simplest solution would be apply echo to an entire track, spanning all the sections, but this is not always what you want.
+
+an example of having echo in its own channel:
+
+	piece=make(
+		Mixer,
+		[
+			[:make, 
+				Sequence,
+				[
+					section0, section1, section2
+				]
+			],
+			[:make,
+				Mixer,
+				[
+					[:make, Echo, [ section0 ], .. ],	# echo will die out some time after section0 completes
+					[:make, Echo, [ section1 ], .. ],	# will contain silence until section1 is started by Sequence
+					[:make, Echo, [ section2 ], .. ],
+				]
+			]
+		]
+	 )
+
+You can see that there is inefficiency due to the fact that each Echo is processing silence for much of the piece.  
+
+You would need to actually measure the cost on a case-by-case basis, before deciding whether this is prohibitive.  The actual cost could easily be negligible.
+
+In the above example, with no controls on the Echos, the extra cost is
+
+	1 for each Echo (when it's producing silence)
+	1 for the Mixer of Echo
+	1 for the Mixer to combine the Sequence with the Echo Mixer
+
+ for a total of 5 extra tickcounts.  5 does not even begin to count as expensive.
+
+If each Echo was an echo chain, or an echo mix, with multiple controls applied, where the controls are all complex, AND there are a large number of very short sections, then yes, the extra cost could be significant.  On the other hand, it might sound amazing!  If you have an issue with computation time, then maybe SnM is not for you.
+
+
+
+The Album
+-----------
+
+I wrote the script incrementally over a three week period.  I started with the script 202102.the.event, which I had used to create the previous album.  As I developed different ideas, I factored out useful function definitions to external load files.  I went through about 35 intermediate versions until I ended up with the version you see in the release.
+
+There are four different types of piece (ie, structure and content).  The script chooses a piece type and runs the functionality for that piece type.
+
+Once the final version of the script was completed, it took about four days to render the album, using a $300 laptop I bought second hand a few years ago.  The rendering happens on its own.  No hand-holding is necessary.
+
+
