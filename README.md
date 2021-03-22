@@ -10,6 +10,8 @@ Currently I have released:
   1.source
  
   2.the.event
+  
+  3.harmony
 
 As each album is released, I am uploading the complete ruby source-code here,
 as well as a tutorial that covers the functionality being illustrated in the album.
