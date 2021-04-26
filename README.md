@@ -13,6 +13,8 @@ Currently I have released:
   
   3.harmony
 
+  4.nature
+
 As each album is released, I am uploading the complete ruby source-code here,
 as well as a tutorial that covers the functionality being illustrated in the album.
 
