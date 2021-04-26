@@ -11,7 +11,7 @@ The plan for this album is:
 
    About 40 minutes of sound. (Standard length for an LP record)
 
-   Each track between 2 - 5 minutes long.
+   Each track between 2 - 3 minutes long.
 
    Make use of a specific rhythmic idea, which evokes memories of nature.
 
@@ -92,21 +92,13 @@ Variations
 ----------
 You can stagger the introduction of the streams, by using After.
 
-You can have all the note and rest lengths in a pattern based on the same duration, eg a beatLen.
-  Specifically, you can make the rest at the end of the inner pattern a single noteLen in duration.
-	And the rest at the end of the outer pattern be the same length as the length of the inner pattern.
+You can have all the note and rest lengths in a pattern based on the same duration, eg a beatLen.  Specifically, you can make the rest at the end of the inner pattern a single noteLen in duration. Also, make the rest at the end of the outer pattern the same length as the length of the inner pattern.
 
-You can have all the patterns in all the streams based on the same time divisions (eg pulseLen / beatLen )
-  This results in rhythmic patterns that sound like they are in some sort of time signature.  They aren't, of course,
-	but because of the nature of the patterns, it sounds like they might be.
+You can have all the patterns in all the streams based on the same time divisions (eg pulseLen / beatLen ).  This results in rhythmic patterns that sound like they are in some sort of time signature.  They aren't, of course, but because of the nature of the patterns, it sounds like they might be.
 
-  If you stagger the introduction of the streams by multiples of pulseLen or beatLen, you avoid a situation where
-   all the patterns start off together, which is usually not desirable.
+If you stagger the introduction of the streams by multiples of pulseLen or beatLen, you avoid a situation where all the patterns start off together, which is usually not desirable.
 
-
-Each stream can use a note that doesn't change in pitch (or duration), but you can add a :trig to a note so it plays
- a melody.  This can be quite effective, but will no longer sound like nature calling.  You can also have :trigs that
- change the note duration or other qualities.
+Each stream can use a note that doesn't change in pitch (or duration), but you can add a :trig to a note so it plays a melody.  This can be quite effective, but will no longer sound like nature calling.  You can also have :trigs that change the note duration or other qualities.
 
 
 Structure
@@ -118,15 +110,12 @@ The usual, eg:
 
 	CrossOverStream
 
-
 It is quite acceptable to also include material that is not based on this pattern.
-
 
 
 The rest of the module
 -----------------------
-Because the pattern that is the basis of the album is so simple and self-expanatory, I will devote the rest of this
- module to explaining some more advanced methods for working with the SnM Sound and Music Engine.
+Because the pattern that is the basis of the album is so simple and self-explanatory, I will devote the rest of this module to explaining some more advanced methods for working with the SnM Sound and Music Engine.
 
 First, some `history' as background.
 
@@ -144,7 +133,7 @@ It took a number of years to slowly build up experience in using SnM to create s
 
 Half way through 2017 (two years into the project) I implemented the Setable interface, which is used for dynamic control, and for triggers.
 
-In 2019, I evolved the concepts of source, the.event, harmony, nature and euclid, which are the basis for this series of albums and modules.  (This module is 4. Nature).   This concept is a pedagogic crystalisation of all the various musical ideas I had been exploring.
+In 2019, I evolved the concepts of source, the.event, harmony, nature and euclid, which are the basis for this series of albums and modules.  (This module is 4. Nature).   This concept is a pedagogic crystallisation of all the various musical ideas I had been exploring.
 
 At the start of 2020, I created the Speculate specification language and the Factory class.  I spent all of 2020 exploring this new programming paradigm.
 
@@ -192,13 +181,13 @@ In this case, it will look for the key in defaults if it can't find it in hints.
 You can also optionally specify some more keys (*otherKeys).  If no values are found for key, it will try each of the other keys in the same way.  It will return the first value it encounters.
 
 
-The basic idea is that getHints will look for the given key in a sequence of Hashes, and return the first value found.  
+The basic idea is that getHints() will look for the given key in a sequence of Hashes, and return the first value found.  
 
-Two hashes are passed explicity as arguments, but getHint() will also check two other hashes as well.
+Two hashes are passed explicitly as arguments, but getHint() will also check two other hashes as well.
 
 These are
 
-	@local	This is an instance variable implemented by Speculate.  All the normal SnM classes implement this variable.
+	@local		This is an instance variable implemented by Speculate.  All the normal SnM classes implement this variable.
 
 	Hints		This is a globally visible variable, and it's a Hash.  It's created by the load-file common.hints
 
@@ -206,9 +195,9 @@ These are
 The search order is:
 
 	hints			argument of getHint()
-	@local		if it exists.
+	@local			if it exists.
 	Hints
-	defaults		argument of getHint()
+	defaults		optional argument of getHint()
 
 
 getHint() just returns the value.
@@ -216,7 +205,7 @@ specHint() is similar, but it speculates the value.
 
 	specHint( key, hints, defaults )
 		is the same as
-	speculate( getHint( key, hints, defaults )
+	speculate( getHint( key, hints, defaults ) )
 
 
 Usage
@@ -224,25 +213,18 @@ Usage
 
 The typical usage pattern is to define a utility function as follows:
 
+	def foo( hints=Hash.new )
+		defaults=ashash(
+			:key1,  defaultValue1,
+			:key2,	defaultValue2
+		 )
 
-# defaults for foo()
-def fooDefaults()
-	ashash(
-		:key1,   defaultValue1,
-		:key2,	defaultValue2
-	 )
-end
+		val1=getHint( :key1, hints, defaults )
+		val2=getHint( :key2, hints, defaults )
 
-# definition of foo()
-def foo( hints=Hash.new )
-	defaults=fooDefaults()
+			.. make use of val1 and val2
 
-	val1=getHint( :key1, hints, defaults )
-	val2=getHint( :key2, hints, defaults )
-
-		.. make use of val1 and val2
-
-end
+	end
 
 
 By defining foo() in this way, we achieve a great deal of flexibility with respect to changing the behaviour of the function.
@@ -294,7 +276,7 @@ We can set up hints globally in Hints.
 
 	foo()			# will use global values
 
-We can not set up any hints, in which case foo() will just use its own defaults ( defined in fooDefaults() )
+We can not set up any hints, in which case foo() will just use its own defaults.
 
 
 You can see that this pattern provides ease of use ( you can just call the function, and it will have sensible defaults), or you can modify the behaviour globally (Hints), on a per-object bases (@local) or on a per-call basis.  And you can mix and match these levels of granularity within a single script, and for different keys (:key1 could be in Hints, whereas :key2 could use the default value).
@@ -324,8 +306,7 @@ The other interfaces used with SnM are:
 	SnM utility functions, classes and methods.
 
 
-I use the hints interface when I want a collection of generic functions that are easy to use "off the shelf", but
- which I can also fine-tune, in order to give each piece or each section its own character.
+I use the hints interface when I want a collection of generic functions that are easy to use "off the shelf", but which I can also fine-tune, in order to give each piece or each section its own character.
 
 
 
@@ -338,7 +319,7 @@ I've already written about it in previous modules.
 
 Speculate takes ruby objects as its source code. 
 
-Specifically, ruby arrays, where the first element of the array is the command, and the rest of the array are the arguments.  
+Specifically, ruby arrays, where the first element of the array is a symbol, (representing a command name), and the rest of the array are the arguments (to that command).  
 
 If Speculate is given an object that it doesn't recognise as a command, it just returns the object.  (If it's an array, but not a command, it will speculate each element of the array and return an array of the results).
 
@@ -364,24 +345,24 @@ The commands you have seen so far are:
 
 	[:make				build an object from specifications
 
-	[:random				float, freq, high or integer
+	[:random			float, freq, high or integer
 
-	[:choose				from a list, or a weighted list
+	[:choose			from a list, or a weighted list
 
 	[:eval				evaluate a string in ruby.
 
-	[:lit					prevent evaluation (speculation) of the arguments
+	[:lit				prevent evaluation (speculation) of the arguments
 
 	[:trace				write a message to stderr
 
-	[:do					speculate (evaluate) a sequence of commands.
+	[:do				speculate (evaluate) a sequence of commands.
 
 
 Also,
 
 	[:self]				returns reference to the object running the language engine.
 
-	[:valueOf, obj]	returns valueOf( obj )
+	[:valueOf, obj]		returns valueOf( obj ) (see the Setable interface, documented in a previous module)
 
 
 Internal State
@@ -434,9 +415,7 @@ From ruby, you can access these same variables, by referencing @local
  :foo and :fooCopy will now both have the same value
 
 
-In fact, [:set will take many arguments.  The first one is the key, the rest are commands or other values.
- It will speculate each command in turn, and the result of the final command is what gets stored with the key.
- This allows you to do intermediate calculations.
+In fact, [:set will take many arguments.  The first one is the key, the rest are commands or other values.  It will speculate each command in turn, and the result of the final command is what gets stored with the key.  This allows you to do intermediate calculations.
 
 eg:
 
@@ -448,7 +427,6 @@ eg:
 	]
 
 :bah contains a random integer in the range 1 to 5.  :foo has that integer plus one.
-
 
 
 If you have a number of values to set, you can use [:let.
@@ -506,8 +484,7 @@ or from speculate (in the context of that object)
 	[:eval, "self.vol=run( :foo )" ]
 
 
-Note that the macro can't take any arguments.  This is because Speculate doesn't (yet) have any scoping rules.
-As a compromise, there is :exec.
+Note that the macro can't take any arguments.  This is because Speculate doesn't (yet) have any scoping rules.  As a compromise, there is :exec.
 
 	[:exec, :foo, *args]
 
@@ -571,7 +548,7 @@ if
 	so if you want several commands in a test or a branch, you need to nest them using [:do
 
 	[:if,
-		[:eval, "rand < 0.5" ].
+		[:eval, "rand < 0.5" ],
 		[:do,
 			[:trace, "doing something" ],
 			[:run, :x],
@@ -626,21 +603,21 @@ The initialiser for Factory can take multiple commands,
 eg:
 
 	noteFactory=Factory.new(
-      [:macro, :makeOsc,
-         [:make,
-            Oscillator,
-            [],       
-            :freq, [:random, :freq, 40.0, 512.0]
-         ]
+		[:macro, :makeOsc,
+			[:make,
+				Oscillator,
+				[],       
+				:freq, [:random, :freq, 40.0, 512.0]
+			]
 		],
-      [:macro, :makeEnv,
-         [:make,
-            Envelope,
-            [],       
-            :duration, [:random, :freq, 0.1, 0.2]
-         ]
+		[:macro, :makeEnv,
+			[:make,
+				Envelope,
+				[],       
+				:duration, [:random, :freq, 0.1, 0.2]
+			]
 		],
-      [:macro, :nextValue,
+		[:macro, :nextValue,
 			[:make,
 				Note,
 				[
@@ -648,7 +625,7 @@ eg:
 					[:run, :makeEnv]
 				]
 			]
-      ]
+		]
     )
 
    noteFactory.nextValue          # creates an Note with random pitch. and duration
@@ -657,22 +634,22 @@ eg:
 alternatively:
 
 	oscFactory=Factory.new(
-      [:macro, :nextValue,
-         [:make,
-            Oscillator,
-            [],
-            :freq, [:random, :freq, 40.0, 512.0]
-         ]
-      ]
+		[:macro, :nextValue,
+			[:make,
+				Oscillator,
+				[],
+				:freq, [:random, :freq, 40.0, 512.0]
+			]
+		]
 	 )
 	envFactory=Factory.new(
-      [:macro, :nextValue,
-         [:make,
-            Envelope,
-            [],
-            :duration, [:random, :freq, 0.1, 0.2]
-         ]
-      ]
+		[:macro, :nextValue,
+			[:make,
+				Envelope,
+				[],
+				:duration, [:random, :freq, 0.1, 0.2]
+			]
+		]
 	 )
 	noteFactory=Factory.new(
 		[:let,
@@ -680,19 +657,17 @@ alternatively:
 			:env,	envFactory
 		],
 		[:macro, :nextValue,
-         [:make,
-            Note,
-            [
-					[:valueOf, [:get, :osc] ],				# oscFactory.nextValue()
+			[:make,
+				Note,
+				[
+					[:valueOf, [:get, :osc] ],		# oscFactory.nextValue()
 					[:valueOf, [:get, :env] ],
 				]
 			]
 		]
 	 )
 
-Note that it's tricky to use make() or [:make to create a Factory, 
- because make() will evaluate the arguments, whereas what you want is for the values to be used in their raw state.
-( you could use [:make if you wrap it in [:lit .  There is also a solution that combines make() and [:lit )
+Note that it's tricky to use make() or [:make to create a Factory, because make() will evaluate the arguments, whereas what you want is for the values to be used in their raw state.  (You could use [:make if you wrap it in [:lit .  There is also a solution that combines make() and [:lit )
 
 Instead of make( Factory, ... ) , use mkfactory( ... ) .
 
@@ -704,9 +679,9 @@ eg:
 			:env,	envFactory
 		],
 		[:macro, :nextValue,
-         [:make,
-            Note,
-            [
+			[:make,
+				Note,
+				[
 					[:valueOf, [:get, :osc] ],
 					[:valueOf, [:get, :env] ],
 				]
@@ -714,7 +689,7 @@ eg:
 		]
 	 )
 
-  which is not much of an improvement, just easier to type.
+  which is just a little easier to type than the equivalent Factory.new( ... ).
 
 
 Notice in noteFactory how it has other factories stored as variables.
@@ -793,23 +768,22 @@ The point is that you can build up a specification in stages, and only build the
 
 For example:
 
-
 	noteSpecFactory=mkfactory(
-      [:macro, :specOsc,
-         [:spec,
-            Oscillator,
-            [],       
-            :freq, [:random, :freq, 40.0, 512.0]
-         ]
+		[:macro, :specOsc,
+			[:spec,
+				Oscillator,
+				[],       
+				:freq, [:random, :freq, 40.0, 512.0]
+			]
 		],
-      [:macro, :specEnv,
-         [:spec,
-            Envelope,
-            [],       
-            :duration, [:random, :freq, 0.1, 0.2]
-         ]
+		[:macro, :specEnv,
+			[:spec,
+				Envelope,
+				[],       
+				:duration, [:random, :freq, 0.1, 0.2]
+			]
 		],
-      [:macro, :nextValue,
+		[:macro, :nextValue,
 			[:spec,
 				Note,
 				[
@@ -845,7 +819,7 @@ You can build an object from this specification using makespec()
 
 eg:
 
-	makespec(  noteSpecFactory.nextValue )
+	makespec( noteSpecFactory.nextValue )
 
 makespec() does the following:
 
@@ -854,7 +828,7 @@ makespec() does the following:
 	build an object from the final specification
 	return the object
 
-This is the real benefit of using [:spec instead of [:make.  You postpone building the object until the specification is fully completed.  You get the entire specification traced to stderr in one piece, so it's very easy to copy and paste the entire specification into later code
+This is the real benefit of using [:spec instead of [:make.  You postpone building the object until the specification is fully completed.  You get the entire specification traced to stderr in one piece, so it's very easy to copy and paste the entire specification into later code.
 
 As it turns out, makespec() will take any ruby object, and can safely be used in any situation:
 
@@ -928,27 +902,32 @@ eg:
 
 This is a bit like subclassing a Class.  The new factory "inherits" all the data and functionality of the original factory, and you then add or modify stuff as appropriate.
 
+(Sidebar:  in fact, there are some object-oriented programming languages which work exactly like this.  They don't have classes at all.  Instead all objects are either created from scratch, or cloned from existing objects.  Instead of classes, you have objects that act as templates for cloning.)
 
 
 
 pros and cons of Factory vs EvalGen
 ------------------------------------
 
-In truth, Factory and EvalGen are pretty much interchangable.  Both are subclasses of Generator and Speculate.  Both can call out to external functions, both can store hints and other data as keys, and both can define and run macros.  Both can create ad-hoc methods on the object.  Both can be cloned (EvalGen doesn't have a method, but you can copy a clone of @local by hand).  The only difference is in the method nextValue().  Factory calls a macro called :nextValue, whereas EvalGen execs a string.
+In truth, Factory and EvalGen are pretty much interchangable.  Both are subclasses of Generator and Speculate.  Both can call out to external functions, both can store hints and other data as keys, and both can define and run macros.  Both can create ad-hoc methods on the object.  Both can be cloned (EvalGen doesn't have a method, but you can copy a clone of @local by hand).  The only difference is in the method nextValue().  Factory calls a macro called :nextValue, whereas EvalGen evals a string.
 
 What I'm really talking about here is the paradigm that each implies.
 
 Factory implies that functionality is stored in the object as macros.  EvalGen implies that the functionality is defined as functions external to the object.
 
-In ruby, functions are globally visible.  This means you can define them in load-files.  You can call them from other functions or from methods.  Any Speculate object can call the function using [:eval .  You can't directly bind a function to a key in a Factory.  The best you can do is bind a string that calls the function ( factory.local[ :key ]="fn()" or  factory.speculate( [:let, :key, "fn()" ], and later call the function using [:eval, [:get, :key] ] .  Functions can't be cloned.  Functions (in ruby) can't be built up using meta-programming (unlike other programming languages like lisp or javascript).
+The EvalGen paradigm:
 
-If you are using Factories, these factories are objects bound to variables.  If you bind to a local variable, then ruby will not let you create them in a load-file, you cannot access the variable from a function or a method (you have to pass them in as arguments).  You can't reference them from [:eval.  You can bind them to a key in the Factory ( local[ :key ]=factory, or [:let, :key, factory ] ).  Then you can activate the factory, eg [:valueOf, [:get, :key ] ].   Factories can be cloned, which helps with code-reusage.  Factories are good candidates for meta-programming.
+	In ruby, functions are globally visible.  This means you can define them in load-files.  You can call them from inside other functions or methods.  Any Speculate object can call the function using [:eval .  You can't directly bind a function to a key in a Factory.  The best you can do is bind a string that calls the function ( factory.local[ :key ]="fn()" or  factory.speculate( [:let, :key, "fn()" ], and later call the function using [:eval, [:get, :key] ] .  Functions can't be cloned.  Unlike other programming languages like lisp or javascript, in ruby, functions are not data, so they can't be built up using meta-programming.
 
-You can bind a Factory or EvalGen to a global variable ($factory) or a constant (NoteFactory).  You can also make it a value in a global constant like Hints, eg Hints[ :noteFactory ]=mkfactory( ... ).  If you do that, you can create the factory in a load-file, or reference it from a function or a method.  
+The Factory paradigm:
+
+	If you are using Factories, these factories are objects bound to variables.  If you bind to a local variable, then ruby will not let you create them in a load-file, you cannot access the variable from a function or a method (you have to pass them in as arguments).  You can't reference them from [:eval.  You can bind them to a key in the Factory ( local[ :key ]=factory, or [:let, :key, factory ] ).  Then you can activate the factory, eg [:valueOf, [:get, :key ] ].   Factories can be cloned, which helps with code-reusage.  Factories are good candidates for meta-programming.
+
+	You can bind a Factory or EvalGen to a global variable ($factory) or a constant (NoteFactory).  You can also make it a value in a global constant like Hints, eg Hints[ :noteFactory ]=mkfactory( ... ).  If you do that, you can create the factory in a load-file, or reference it from a function or a method.  
 
 Some might see all this as a statement of the obvious, and to others it will look like a tedius bunch of irrelevant stuff.  But in practice, it makes a big difference because it changes the way you organise and manage your code.  This will become more obvious with experience.
 
-In terms of code management, the biggest irritation with factories is ruby's rules about local variables. (And only because I avoid creating lots of adhoc classes, and I avoid global variables because I find the syntax ugly.  On reflection, constants is probably a good solution.)
+For me, the biggest irritation with factories is ruby's rules about local variables. (And only because I avoid creating lots of adhoc classes, and I avoid global variables because I find the syntax ugly.)
 
 In 2020, when I was using Factory exclusively, and not using EvalGen with functions and hints, the way I solved it was to have an extra layer of pre-processing.  I would put the definition of useful Factories into include files, and have a special #include statement in my ruby where I wanted the include file to go.  I wrote a pre-parser that detected the #include statements and built up the final ruby script programmatically.  This proved fairly successful.  I don't like long source-code files, and it was a nice way to factor out re-usable generic definitions.
 
@@ -1006,7 +985,7 @@ Here is an example:
 					[:make, Envelope,	[ [:run, :envShape] ] ]
 				],
 				:duration,	[:get, :duration],
-				:trigme,		[:pitch, [:run, :makeMelody] ]
+				:trigme,	[:pitch, [:run, :makeMelody] ]
 			]		
 		]
 	 )
@@ -1023,11 +1002,11 @@ Here is an example:
 
 	def mate( parent1, parent2 )
 		child=parent1.cloneme(
-			:duration,	chooseFrom( parent1.local[ :duration ], parent2.local[ :duration ] ).
-			:tonic,	chooseFrom( parent1.local[ :tonic ], parent2.local[ :tonic ] ).
-			:scale,	chooseFrom( parent1.local[ :scale ], parent2.local[ :scale ] ).
-			:minFreq,	chooseFrom( parent1.local[ :minFreq ], parent2.local[ :minFreq ] ).
-			:maxFreq,	chooseFrom( i1.local[ :maxFreq ], i2.local[ :maxFreq ] ).
+			:duration,	chooseFrom( parent1.local[ :duration ], parent2.local[ :duration ] ),
+			:tonic,		chooseFrom( parent1.local[ :tonic ], parent2.local[ :tonic ] ),
+			:scale,		chooseFrom( parent1.local[ :scale ], parent2.local[ :scale ] ),
+			:minFreq,	chooseFrom( parent1.local[ :minFreq ], parent2.local[ :minFreq ] ),
+			:maxFreq,	chooseFrom( i1.local[ :maxFreq ], i2.local[ :maxFreq ] )
 		 )
 	end
 
@@ -1081,7 +1060,7 @@ For example:
 			:follow		choose a setting/key and another performer.  change your value to be the same as or closer to that performer's value
 
 
-You can see how using this technique introduces a type of structure to the music.  Remember, I think of structure as the way the music changes over time.
+You can see how using this technique introduces a type of structure to the music.  Remember, I think of structure as the way the music changes over time.  I have tried this technique, and the results are surprisingly satisfying.
 
 
 
@@ -1097,11 +1076,14 @@ eg
 		[:set, :state, [:choose, :from, 0, 1, 2, 3 ] ],		# intialise the current state
 
 		[:macro, 0,
-			[:set, :state, [:choose, :weighted, 0, rand, 1, rand, 2, rand, 3, rand ] ],	# change state for next time
+			[:set, :state, [:choose, :weighted, 0, rand, 1, rand, 2, rand, 3, rand ] ],	
+							# change state for next time. 
+							# The weights don't change once the macro is defined.
 			[:run, :do0]
 		],
 		[:macro, 1,
-			[:set, :state, [:choose, :weighted, 0, rand, 1, rand, 2, rand, 3, rand ] ],	# different weights to 0
+			[:set, :state, [:choose, :weighted, 0, rand, 1, rand, 2, rand, 3, rand ] ],	
+							# different weights to 0
 			[:run, :do1]
 		],
 		[:macro, 2,
@@ -1154,8 +1136,9 @@ For example
 	
 	chordTemplate=HarmonicsScale.new( 5 )		# ie, major chord
 
-	chord=ClosestScale.new( scale, 1, chordTemplate, :closestBelow )	# :closest, :closestBelow or :closestAbove
-											# 0 is the root, so 1 means the 2nd position of the scale.
+	chord=ClosestScale.new( scale, 1, chordTemplate, :closestBelow )	
+			# :closest, :closestBelow or :closestAbove
+			# 0 is the root, so 1 means the 2nd position of the scale.
 
 		returns a chord, based on the 2nd position of the scale, and using scale notes close to a major chord.
 
@@ -1183,10 +1166,9 @@ I usually stick with major/minor triads as the chord template because I like the
 	ScaleChordKey
 		majorTriad()		# wrapper for DiatonicScale.new.majTriad()
 		minorTriad()		# wrapper for DiatonicScale.new.minTriad()
-		sixSeven()			# random 4-note chord, consisting of either a minor or major triad, 
-								#   plus a random note somewhere between a 6th and a 7th.
-								# a random chord, but when used as a chord template, the randomness doesn't matter.
-								#  you get whatever notes the scale can give you.
+		sixSeven()			
+			# random 4-note chord, consisting of either a minor or major triad, plus a random note somewhere between a 6th and a 7th.
+				# a random chord, but when used as a chord template, the randomness doesn't matter - you get whatever notes the scale can give you.
 
 
 You don't have to use a triad as the chord template.  Any number of notes can be in the chord template.  Just be aware that the number of notes returned by ClosestScale will depend also on the scale.  You can easily end up with less notes in the resulting chord than there are in the chord template. 
@@ -1205,22 +1187,25 @@ eg:
 		ScaleChordKey,
 		[
 			key,			# the underlying key.  sets @key
-			0				# the chord position, sets @chordAt.  0 means root position
+			0				# (optional)  the chord position, sets @chordAt.  0 means root position
 		],
 
 		# optional, but illustrating the usage:
 			:chordType,		ScaleChordKey.new.majorTriad(),		# the default
-			:closnessMode,	:closest,				# the default
-			:key,				key,			# set by the first argument, above
-			:chordAt,		0				# the default.  This is initialised by the second argument above
+			:closnessMode,	:closest,	# the default
+			:key,			key,		# set by the first argument, above
+			:chordAt,		0			# the default.  This is initialised by the second argument above
 	 )
 
 	chordGenerator.nextValue()
 		returns a Key, representing the closest chord to a major triad, at the root position.
 
-You should be aware that a chord is just a Scale.
+What is the tonic of the chord's Key?
+		
+As I mentioned above, a chord is just a Scale (not a Key).
 
-To use the chord, you need to supply a tonic.
+To use a chord, you need a tonic (a Key is a Scale plus a tonic).
+
 The tonic of the chord is not the tonic of the scale you based the chord on.
 
 So, if you have a key (say C major), and create a chord from that key (say D minor), then the Key representing the chord has D as the tonic, not C.
@@ -1238,11 +1223,11 @@ It is just a key, but it has an extra property,
 		@currentChord, which is a ScaleChordKey that returns the current chord.
 
 methods:
- 	chordAt( index )			# changes the chord. index is index into the key's scale. 
+ 	chordAt( index )		# changes the chord. index is index into the key's scale. 
 							# if @currentChord is nil, it creates a new ScaleChordKey and stores it in @currentChord
 							# otherwise, it just modifies @currentChord's :chordAt
 
-	currentChord   # returns @currentChord, which is a ScaleChordKey, that provides the current chord (as Key)
+	currentChord   # returns @currentChord, which is a ScaleChordKey, that provides the current chord (as a Key)
 						# default settings are	closenessMode=:closest, chordType=majorTriad()
 
 	chord				# convenience method.  returns @currentChord.nextValue
@@ -1272,11 +1257,11 @@ The reason for having both chord and currentChord is that you often need a Gener
 The Album
 -----------
 
-I wrote the script incrementally over a three week period.  I started with a blank script, but used some of the load files left over from  202102.the.event, (used to create the previous album ).
+I wrote the script incrementally over a three week period.  I started with a blank script, but used some of the load files left over from 202103.harmony, (used to create the previous album ).
 
 As I developed different ideas, I factored out useful function definitions to external load files.  I went through about 30 intermediate versions until I ended up with the version you see in the release.
 
-Once the final version of the script was completed, it took about two days to render the album, using a $300 laptop I bought second hand a few years ago.  The rendering happens on its own.  No hand-holding is neccessary.
+Once the final version of the script was completed, it took about two days to render the album, using a $300 laptop I bought second hand a few years ago.  The rendering happens on its own.  No hand-holding is necessary.
 
 
 
