@@ -1,0 +1,1282 @@
+
+
+Welcome to the fourth module in the fake.music and SnM blog.
+
+
+
+Module 4.  Nature
+=============================================================
+
+The plan for this album is:
+
+   About 40 minutes of sound. (Standard length for an LP record)
+
+   Each track between 2 - 5 minutes long.
+
+   Make use of a specific rhythmic idea, which evokes memories of nature.
+
+
+
+
+In this module, I will cover the following themes
+
+	1. explain the rhythmic idea, and show how it's implemented
+
+	2. describe the use of hints as a programming tool in SnM
+
+	3. describe the use of the Speculate specification language and the Factory class in SnM
+
+	4. chords based on scales
+
+
+1. the rhythmic idea
+=============================================================
+
+Start with a sound event.  This is the unit for the pattern.
+
+	Repeat this unit a fixed number of times (for some small integer).
+	Follow that by a rest, a fixed period of silence.
+
+This sequence of units, followed by a rest, forms another unit.
+
+Apply the same treatment to this unit.
+
+We now have an even longer unit.
+
+Repeat this an arbitrary number of times, followed by an arbitrary length of silence, and so on.
+
+You can implement this idea in SnM as follows:
+
+	def makePattern( unit, count, restLen )
+		[:make,
+			Sequence,
+			[
+				[:make, Times, [ count, unit ] ],
+				[:make, Duration, [ restLen ]
+			]
+		]
+	end
+
+	innerPattern=makePattern( note, innerCount, innerRestLen )
+	outerPattern=makePattern( innerPattern, outerCount, outerRestLen )
+
+	stream=make(
+		Stream,
+		[
+			[:make,
+				Times,
+				[
+					1,					# changed by :doTriggers
+					outerPattern
+				],
+				:trigme, [ :count, [:make, RandomInteger, [ 1, 5 ] ] ],        # for example
+				:doTriggers
+			],
+			[:make,
+				Duration,
+				[],
+				:trigme, [ :duration, [:make, RandomFloat, [ 0.0, 10.0 ] ] ],  # for example
+				:doTriggers
+			]
+		]
+	 )
+
+
+You then mix a number of these streams together to create a piece.
+
+The effect is something similar to natural bird, frog or animal calls from nature.
+The notes can be simple oscillator with envelope.  You can add a pitch bend.  Or you can create more complex sounds.
+
+
+Variations
+----------
+You can stagger the introduction of the streams, by using After.
+
+You can have all the note and rest lengths in a pattern based on the same duration, eg a beatLen.
+  Specifically, you can make the rest at the end of the inner pattern a single noteLen in duration.
+	And the rest at the end of the outer pattern be the same length as the length of the inner pattern.
+
+You can have all the patterns in all the streams based on the same time divisions (eg pulseLen / beatLen )
+  This results in rhythmic patterns that sound like they are in some sort of time signature.  They aren't, of course,
+	but because of the nature of the patterns, it sounds like they might be.
+
+  If you stagger the introduction of the streams by multiples of pulseLen or beatLen, you avoid a situation where
+   all the patterns start off together, which is usually not desirable.
+
+
+Each stream can use a note that doesn't change in pitch (or duration), but you can add a :trig to a note so it plays
+ a melody.  This can be quite effective, but will no longer sound like nature calling.  You can also have :trigs that
+ change the note duration or other qualities.
+
+
+Structure
+----------
+
+The usual, eg:
+
+	Mix or Mixer
+
+	CrossOverStream
+
+
+It is quite acceptable to also include material that is not based on this pattern.
+
+
+
+The rest of the module
+-----------------------
+Because the pattern that is the basis of the album is so simple and self-expanatory, I will devote the rest of this
+ module to explaining some more advanced methods for working with the SnM Sound and Music Engine.
+
+First, some `history' as background.
+
+I started work on the SnM Sound and Music Engine late in 2015.  The intention was to build a general-purpose music engine, but it also needed to create sounds, so it would have some way of realising the music.
+
+I didn't reference any other sound software when planning, designing or implementing SnM, I just made it all up as I went along.  I already had decades of experience in IT, I have a science degree (Mathematics and Physics), and decades of experience as a musician and composer, with some experience doing recordings and production.  So the whole project was just an interesting challenge as a hobby.  I knew exactly what I wanted, and knew it was within my capabilities.
+
+My musical interests include rock, experimental and classical, so I was mindful of the fact that the music engine should have no artificial limitations or assumptions built into it.  This is the main reason I never bothered to implement midi, for example.  (I had already implemented midi interfaces in 1987 and again in 1999, so I knew what was involved).
+
+All the basic functionality was implemented within the first few months.  This included Oscillators, Envelopes, Sequences, Mixers and so on, as well as Scales, Tempos and other concepts. 
+
+SnM is really a framework, so functionality is only a minor part of what is required.  The real challenge is to build an intuitive interface that is easy and enjoyable in practice.  Something that makes simple things simple, but which also allows more complexity or sophistication as required.  SnM is exclusively a scripting interface (no real-time or graphical interfaces involved).  In a project of this kind, it's not possible to know in advance the best way to build the programming interface, so the best approach is to be constantly using the framework as it's being developed.  And by using the framework, I mean to do real work.  Which means soundfiles that are meant to be listened to as music.
+
+It took a number of years to slowly build up experience in using SnM to create soundfiles, and the framework developed in parallel as I experimented with different approaches and different ideas.  There were the inevitable dead ends and false starts, which is to be expected.  It is not so much that the functionality changes, it's that the usage patterns and the API evolves.
+
+Half way through 2017 (two years into the project) I implemented the Setable interface, which is used for dynamic control, and for triggers.
+
+In 2019, I evolved the concepts of source, the.event, harmony, nature and euclid, which are the basis for this series of albums and modules.  (This module is 4. Nature).   This concept is a pedagogic crystalisation of all the various musical ideas I had been exploring.
+
+At the start of 2020, I created the Speculate specification language and the Factory class.  I spent all of 2020 exploring this new programming paradigm.
+
+At the beginning of 2021, I decided to sign onto bandcamp.com, with the plan to release a series of one album per month, together with the series of modules, which is what you are reading now.
+
+The idea was that each album would use only the techniques I describe in the corresponding module.  So I had to plan what SnM functionality I could introduce with each module.  On the one hand, the first module needed to have enough capability that I could produce an album that was worth listening to.  On the other hand, I couldn't introduce too much in the first module, since it would just be too much to take in.  This is why I held off on Factory until module 4 (this module).  The problem was that Speculate had proved so very useful in 2020.  For my own sanity, I was reluctant to go back to the older ways of working (which were a little tedious by comparison).  The compromise I came up with was to only use Speculate in conjunction with the make() function, and only introduce enough of the language for that narrow use.
+
+Because I had decided not to use Factory for the first 3 albums, I needed a replacement.  The idea I came up with was EvalGen (and SpecGen).  This idea was a natural progression from what I had been doing in 2020.  I had Factory, which is a Generator that uses Speculate.  Speculate is a Turing-complete language, but not a true application language.  Instead, it has [:eval ], which allows it to call out to Ruby to do anything not possible (or not easy) in Speculate.  At first I avoided [:eval ] as much as possible, for reasons of purity.  But eventually I found that sometimes you just had to use [:eval ], so I got used to it.  As I expanded my use of [:eval ], I realised that I could reference instance variables (such as @local), and I could call globally visible functions.  Eventually I realised that I could define a function that referenced instance variables, and those variables would be visible when I used [:eval ] to call the function from a Factory.  This led to the implementation of EvalGen, as a work-around for not being able to use Factory.
+
+Well, the irony is that EvalGen proved to be so useful, that now, at module 4, I'm wondering whether Factory has any advantages over EvalGen.  I guess I'll find out this month.
+
+With Factory, the idea was to keep all the code internal to the Factory object.  With EvalGen, the functionality is transferred to external function definitions.
+
+I'll explain Factory and the use of Speculate later in this module.  Before that, I want to discuss how I use Hints to fine-tune the behaviour of those external functions.
+
+
+2. Hints
+=============================================================
+I have commented briefly in previous modules about how I use hints when writing the scripts.  Now I will describe exactly how this works.
+
+In some respects, hints play a role similar to that of closures.  By setting up hints in a particular way, the function "sees" different values when it runs.
+
+SnM has a load-file called common.hints .
+
+This defines several functions.
+
+The most useful one is:
+
+	getHint( key, hints, defaults=Hash.new, *otherKeys )
+
+The simplest usage is
+
+	val = getHint( :someKey, hints )
+
+		where hints is a Hash, and :someKey is a ruby symbol
+
+getHint() will look up the key in the Hash hints, and return the value if it's found.
+
+You can also specify a second Hash, defaults.
+
+	val = getHint( :someKey, hints, defaults )
+
+In this case, it will look for the key in defaults if it can't find it in hints.
+
+You can also optionally specify some more keys (*otherKeys).  If no values are found for key, it will try each of the other keys in the same way.  It will return the first value it encounters.
+
+
+The basic idea is that getHints will look for the given key in a sequence of Hashes, and return the first value found.  
+
+Two hashes are passed explicity as arguments, but getHint() will also check two other hashes as well.
+
+These are
+
+	@local	This is an instance variable implemented by Speculate.  All the normal SnM classes implement this variable.
+
+	Hints		This is a globally visible variable, and it's a Hash.  It's created by the load-file common.hints
+
+
+The search order is:
+
+	hints			argument of getHint()
+	@local		if it exists.
+	Hints
+	defaults		argument of getHint()
+
+
+getHint() just returns the value.
+specHint() is similar, but it speculates the value.
+
+	specHint( key, hints, defaults )
+		is the same as
+	speculate( getHint( key, hints, defaults )
+
+
+Usage
+-----
+
+The typical usage pattern is to define a utility function as follows:
+
+
+# defaults for foo()
+def fooDefaults()
+	ashash(
+		:key1,   defaultValue1,
+		:key2,	defaultValue2
+	 )
+end
+
+# definition of foo()
+def foo( hints=Hash.new )
+	defaults=fooDefaults()
+
+	val1=getHint( :key1, hints, defaults )
+	val2=getHint( :key2, hints, defaults )
+
+		.. make use of val1 and val2
+
+end
+
+
+By defining foo() in this way, we achieve a great deal of flexibility with respect to changing the behaviour of the function.
+
+
+We can explicitly pass in the values we want when the function is called:
+
+	hints=ashash( :key1, myValue1, :key2, myValue2 )
+	foo( hints )
+
+We can call the function repeatedly from an EvalGen (or a Factory), and set the hints for that object:
+
+	gen=make( 
+			EvalGen, 
+			[ "foo()" ], 
+			:local, 
+				ashash( 
+					:key1, genValue1, 
+					:key2, genValue2
+				 )
+		 )
+
+	gen.nextValue				# calls foo(), which gets its hints from gen.local
+
+
+	Alternatively:
+
+		gen=make(
+				EvalGen, 
+				[ "foo()" ]
+			 )
+		gen.speculate(
+			[:let,
+				:key1, genValue1, 
+				:key2, genValue2
+			]
+		 )
+
+		gen.nextValue				# calls foo(), which gets its hints from gen.local
+
+	[:let is explained in the next section
+
+
+
+We can set up hints globally in Hints.
+
+	Hints[ :key1 ]=globalValue1
+	Hints[ :key2 ]=globalValue2
+
+	foo()			# will use global values
+
+We can not set up any hints, in which case foo() will just use its own defaults ( defined in fooDefaults() )
+
+
+You can see that this pattern provides ease of use ( you can just call the function, and it will have sensible defaults), or you can modify the behaviour globally (Hints), on a per-object bases (@local) or on a per-call basis.  And you can mix and match these levels of granularity within a single script, and for different keys (:key1 could be in Hints, whereas :key2 could use the default value).
+
+
+For the previous albums, I ended up with many many utility functions, each with its own set of hint keys.
+
+In effect, this creates yet another Application Programming Interface for the SnM Sound and Music Engine.
+
+ Documentation would look like this:
+
+	function name
+
+		function behaviour
+
+		hint keys
+			key		effect
+			key		effect
+
+
+The other interfaces used with SnM are:
+
+	Speculate specification language (documented below)
+
+	Setable keys (defined by class, respects class heirarchy)
+
+	SnM utility functions, classes and methods.
+
+
+I use the hints interface when I want a collection of generic functions that are easy to use "off the shelf", but
+ which I can also fine-tune, in order to give each piece or each section its own character.
+
+
+
+3. Speculate, and Factory
+=============================================================
+
+Speculate is a specification language.  Its purpose is to specify and build objects in SnM.
+
+I've already written about it in previous modules.
+
+Speculate takes ruby objects as its source code. 
+
+Specifically, ruby arrays, where the first element of the array is the command, and the rest of the array are the arguments.  
+
+If Speculate is given an object that it doesn't recognise as a command, it just returns the object.  (If it's an array, but not a command, it will speculate each element of the array and return an array of the results).
+
+
+Speculate is high in the class heirarchy:
+
+   Textwise > Tracer > Setable > Speculate
+
+ which means that most SnM classes implement Speculate.
+
+
+Because Speculate is implemented as a class, this means that every SnM object is its own language engine, with internal state independent of any other SnM object.
+
+The internal state is held in an instance variable called @local, which is a Hash.  The values of the hash are the internal state.
+
+@local is obviously local to the SnM object, but the hash keys are global to the language engine of that object.
+
+Speculate has a flat namespace, and no scope rules.  All keys are global to the language engine.
+
+It would be fairly easy to implement nested scoping for Speculate (about a day to implement, using Frames), but it's never been a high priority, and the need is not great.  One day.  Not today.
+
+The commands you have seen so far are:
+
+	[:make				build an object from specifications
+
+	[:random				float, freq, high or integer
+
+	[:choose				from a list, or a weighted list
+
+	[:eval				evaluate a string in ruby.
+
+	[:lit					prevent evaluation (speculation) of the arguments
+
+	[:trace				write a message to stderr
+
+	[:do					speculate (evaluate) a sequence of commands.
+
+
+Also,
+
+	[:self]				returns reference to the object running the language engine.
+
+	[:valueOf, obj]	returns valueOf( obj )
+
+
+Internal State
+---------------
+
+Internal State is held in an instance variable @local, which is a Hash.
+
+	[:local]			returns the value of @local
+
+eg:
+
+	[:trace, [:local] ]				# sometimes useful for debugging
+
+
+@local provides a namespace, and you can use it to store and fetch values similar to variables.
+
+	# store value in key
+	[:set,
+		key,			# acts like a variable name
+		value
+	]
+
+eg:
+	[:set, :one, 1 ]
+
+
+You retrieve the value like so:
+
+	[:get, :one ]		# returns 1
+
+
+From ruby, you can access these same variables, by referencing @local
+
+  obj.speculateList(
+		[:set, :foo, 1 ]
+		[:set, :bah, [:eval, "@local[ :foo ]+1" ]  ]
+   )
+		# returns [ 1, 2 ]	(speculateList returns a list of results)
+
+  # as a side effect, @local[ :foo ] now has a value of 1, and @local[ :bah ] has a value of 2.
+  obj.local[ :bah ]			# returns 2
+
+
+[:set will also return the value, so we can do something like this:
+
+	[:set, :foo,
+		[:set, :fooCopy, [:random, :float, 0.0, 1.0 ] ]
+	]
+
+ :foo and :fooCopy will now both have the same value
+
+
+In fact, [:set will take many arguments.  The first one is the key, the rest are commands or other values.
+ It will speculate each command in turn, and the result of the final command is what gets stored with the key.
+ This allows you to do intermediate calculations.
+
+eg:
+
+	[:set, :foo,
+		[:set, :bah,
+			[:random, :integer, 1, 5 ]
+		],
+		[:eval, "@local[ :bah ]+1" ]
+	]
+
+:bah contains a random integer in the range 1 to 5.  :foo has that integer plus one.
+
+
+
+If you have a number of values to set, you can use [:let.
+Let only allows one command per key, but often that's all you need:
+
+	[:let,
+		:x,	[:random, :float, 0.0, 1.0],
+		:y,	[:random, :freq, 40.0, 100.0]
+	]
+
+  you can always use [:do to wrap multiple commands into a single command.
+
+
+[:letlit is similar, but it doesn't speculate the values, it just stores the literal value:
+
+	[:letlit,
+		:x,	[:random, :float, 0.0, 1.0],
+		:y,	[:random, :freq, 40.0, 100.0]
+	]
+
+	:x now contains [:random, :float, 0.0, 1.0], 
+		whereas in the previous example it would have an actual float, like 0.55.
+
+
+macros
+-------
+
+A macro is a set of speculate commands that is stored in @local as a named key, so you can run it later.
+
+To define a macro:
+
+	[:macro,		macroname,   *commands ]
+
+eg:
+
+	[:macro, :foo,
+		[:trace, "now running :foo"],
+		[:set, :bah, [:random, :float, 0.0, 1.0 ] ],
+		[:trace, ":bah is now: ", [:get, :bah] ],
+		[:get, :bah ]
+	]
+
+To run the macro :foo, do
+
+	[:run, :foo]
+
+
+
+You can run a macro from ruby by using the method run()
+
+	obj.run( :foo )
+
+or from speculate (in the context of that object)
+
+	[:eval, "self.vol=run( :foo )" ]
+
+
+Note that the macro can't take any arguments.  This is because Speculate doesn't (yet) have any scoping rules.
+As a compromise, there is :exec.
+
+	[:exec, :foo, *args]
+
+exec stores the args in an instance variable @args, and then runs :foo.  :foo can access the variable @args
+
+	[:args]			returns @args
+	[:arg, n ]		returns @args[ n ]
+
+Note that there is only one instance variable @args, so you have to be careful nesting macros that use @args.
+
+From ruby, you can use the method exec()
+
+	obj.exec( :foo, *args )
+
+
+macros are stored in @local, so they use the same namespace as variables.
+
+[:macro is just a wrapper for [:set.
+
+	[:set, :foo,
+		[:lit,
+			[
+				*cmds
+			]
+		]
+	]
+
+The value stored in :foo is an array of commands, which is what [:macro will store.
+
+You can retrieve the value of a macro exactly as though it is a variable:
+
+	[:get, :foo]
+
+		returns array containing the macro definition.
+
+Because a macro is just data (an array of commands), you can do meta-programming to retrieve, copy, manipulate or generate macro definitions.
+
+eg
+
+	x.local[ :foo ]=cloneArray( y.local[ :foo ] )	# x and y now both have a macro, :foo, defined the same.
+
+	x.local[ :foo ]=[ [:trace, "doing x.foo" ] ].concat( x.local[ :foo ] )
+
+			# x's version of :foo now has a [:trace command at the start.
+
+
+Turing complete
+---------------
+
+Speculate has some simple control structures:
+
+if
+--
+	[:if,
+		test,
+		if-branch
+		else-branch
+	]
+
+	test, if-branch and else-branch are each a single command. (else-branch is optional).
+	so if you want several commands in a test or a branch, you need to nest them using [:do
+
+	[:if,
+		[:eval, "rand < 0.5" ].
+		[:do,
+			[:trace, "doing something" ],
+			[:run, :x],
+			[:run, :y]
+		],
+		[:trace, "doing nothing" ]				# optional
+	]
+
+while
+-----
+
+	[:while,
+		condition,
+		*commands
+	]
+
+	[:while allows multiple commands, no need to nest them with [:do.
+
+
+
+This is enough for now.
+
+You can see that with variables as state, and the use of macros, you can implement a lot of functionality using speculate.
+
+
+Factory
+--------
+
+Factory < Generator
+
+nextValue() runs the macro :nextValue
+
+So to use a Factory, you need to define a macro :nextValue.
+
+eg:
+
+	oscFactory=Factory.new(
+		[:macro, :nextValue,
+			[:make,
+				Oscillator,
+				[],
+				:freq, [:random, :freq, 40.0, 512.0]
+			]	
+		]
+	 )
+
+	oscFactory.nextValue				# returns a new Oscillator with random pitch.
+
+
+The initialiser for Factory can take multiple commands,
+
+eg:
+
+	noteFactory=Factory.new(
+      [:macro, :makeOsc,
+         [:make,
+            Oscillator,
+            [],       
+            :freq, [:random, :freq, 40.0, 512.0]
+         ]
+		],
+      [:macro, :makeEnv,
+         [:make,
+            Envelope,
+            [],       
+            :duration, [:random, :freq, 0.1, 0.2]
+         ]
+		],
+      [:macro, :nextValue,
+			[:make,
+				Note,
+				[
+					[:run, :makeOsc],
+					[:run, :makeEnv]
+				]
+			]
+      ]
+    )
+
+   noteFactory.nextValue          # creates an Note with random pitch. and duration
+
+
+alternatively:
+
+	oscFactory=Factory.new(
+      [:macro, :nextValue,
+         [:make,
+            Oscillator,
+            [],
+            :freq, [:random, :freq, 40.0, 512.0]
+         ]
+      ]
+	 )
+	envFactory=Factory.new(
+      [:macro, :nextValue,
+         [:make,
+            Envelope,
+            [],
+            :duration, [:random, :freq, 0.1, 0.2]
+         ]
+      ]
+	 )
+	noteFactory=Factory.new(
+		[:let,
+			:osc,	oscFactory,
+			:env,	envFactory
+		],
+		[:macro, :nextValue,
+         [:make,
+            Note,
+            [
+					[:valueOf, [:get, :osc] ],				# oscFactory.nextValue()
+					[:valueOf, [:get, :env] ],
+				]
+			]
+		]
+	 )
+
+Note that it's tricky to use make() or [:make to create a Factory, 
+ because make() will evaluate the arguments, whereas what you want is for the values to be used in their raw state.
+( you could use [:make if you wrap it in [:lit .  There is also a solution that combines make() and [:lit )
+
+Instead of make( Factory, ... ) , use mkfactory( ... ) .
+
+eg:
+
+	noteFactory=mkfactory(
+		[:let,
+			:osc,	oscFactory,
+			:env,	envFactory
+		],
+		[:macro, :nextValue,
+         [:make,
+            Note,
+            [
+					[:valueOf, [:get, :osc] ],
+					[:valueOf, [:get, :env] ],
+				]
+			]
+		]
+	 )
+
+  which is not much of an improvement, just easier to type.
+
+
+Notice in noteFactory how it has other factories stored as variables.
+
+noteFactory can [:get or [:set variables on oscFactory or envFactory using the following commands:
+
+	[:getget, *keys ]
+
+		will follow down the list of keys un-nesting the factories and return the final value.
+
+eg:
+
+	from noteFactory:
+
+		[:getget, :osc, :nextValue ]
+
+			will return the contents of :nextValue from oscFactory (which is stored in :osc)
+
+Similarly,
+
+	[:setset, *keys, value ]
+
+	from noteFactory:
+
+		[:setset, :osc, :foo, "hello" ]
+
+		will store "hello" in a key :foo in the object oscFactory
+
+
+and
+
+	[:setsetlit,	*keys, value ]
+
+		the value is not speculated, the raw value is stored.
+
+
+
+:spec vs :make
+-------------
+
+[:make will build an object from a specification.
+
+If you have read through any of the code from github, you will notice that I often use [:spec instead.
+
+
+[:spec has exactly the same syntax as [:make, so what is the difference?
+
+
+[:make builds an object from specifications
+
+[:spec specifies an object but doesn't build it.
+
+
+When the command [:spec is speculated (evaluated), all the arguments are speculated, but the [:spec part is retained.
+
+eg:
+
+	[:spec,
+		Oscillator,
+		[],
+		:pitch, [:random, :freq, 100.0, 200.0 ]
+	]
+
+when evaluated might return
+
+	[:spec,
+		Oscillator,
+		[],
+		:pitch, 150.0
+	]
+
+  it's the same structure, but the random freq has been calculated.
+
+
+The point is that you can build up a specification in stages, and only build the object after everything is ready.
+
+For example:
+
+
+	noteSpecFactory=mkfactory(
+      [:macro, :specOsc,
+         [:spec,
+            Oscillator,
+            [],       
+            :freq, [:random, :freq, 40.0, 512.0]
+         ]
+		],
+      [:macro, :specEnv,
+         [:spec,
+            Envelope,
+            [],       
+            :duration, [:random, :freq, 0.1, 0.2]
+         ]
+		],
+      [:macro, :nextValue,
+			[:spec,
+				Note,
+				[
+					[:run, :specOsc],
+					[:run, :specEnv]
+				]
+			]
+		]
+	 )
+
+	noteSpecFactory.nextValue  # returns a [:spec, not a Note.
+
+ eg, it might return
+
+	[:spec,
+		Note,
+		[
+			[:spec,
+				Oscillator,
+				[],
+				:pitch, 128.0
+			],
+			[:spec,
+				Envelope,
+				[],
+				:duration, 0.15
+			]
+		]
+	]
+
+
+You can build an object from this specification using makespec()
+
+eg:
+
+	makespec(  noteSpecFactory.nextValue )
+
+makespec() does the following:
+
+	speculate the spec (to resolve any unresolved calculations)
+	trace the final specification to stderr
+	build an object from the final specification
+	return the object
+
+This is the real benefit of using [:spec instead of [:make.  You postpone building the object until the specification is fully completed.  You get the entire specification traced to stderr in one piece, so it's very easy to copy and paste the entire specification into later code
+
+As it turns out, makespec() will take any ruby object, and can safely be used in any situation:
+
+	makespec( makespec( makespec( spec ) ) ) 
+
+		will still just take a spec and return the object.  
+		The second two makespecs() just take the built object, and return it untouched.
+		stderr will just have some extra lines that mention the same object again.
+
+
+To complete the picture, you also need to know about the following commands:
+
+	[:convert		# takes a :spec, and replaces all occurrences of :spec with :make
+						# will work down through nested arrays, 
+						# but otherwise leaves everything else untouched.
+
+	[:build			# takes a :make and builds the object.		(really, just does speculate( cmd ) )
+
+
+	[:unconvert		# replaces all occurrences of :make with :spec
+
+	[:convertx		# speculates the arguments, then does [:convert on the result.
+
+		for example, if the spec is stored in a variable
+
+			[:convertx, [:get, :specification] ]	# does what you want
+
+			[:convert, [:get, :specification] ] 	# returns [:get, :specification], which is not what you want.
+
+	[:unconvertx	# similar.
+
+
+clones
+-------
+
+You can clone a Factory to create a new Factory.
+
+	factory2=factory1.cloneme()
+
+The new factory2's @local will be cloneHash() of factory1's @local, so the local data and macros will be identical in structure, but any arrays or hashes will be clones, not the original array or hash.  Any other objects will be identical (ie, the same object will be referenced by both factories).
+
+In addition, if factory1 has a macro :onclone, then this macro will be run on factory2 after its @local has been populated.
+
+You can then modify factory2 to change the data, add new macros or modify existing macros, and so on.
+
+The cloneme() method takes any number of arguments, which are all speculated at the end of the clone operation.
+
+eg:
+
+	factory1=mkfactory(
+		[:let,
+			:x, "blah",
+			:y, [:random, :float, 0.0, 1.0 ]
+		],
+		[:macro, :foo,
+			[:trace, "foo", [:get, :x] ]
+		],
+		[:macro, :nextValue,
+			[:run, :foo],
+			[:get, :y ]
+		]
+	 )
+
+	factory2=factory1.cloneme(
+		[:let,
+			:x, "factory2",
+			:y, [:random, :integer, 3, 5 ]
+		]
+	 )
+
+
+This is a bit like subclassing a Class.  The new factory "inherits" all the data and functionality of the original factory, and you then add or modify stuff as appropriate.
+
+
+
+
+pros and cons of Factory vs EvalGen
+------------------------------------
+
+In truth, Factory and EvalGen are pretty much interchangable.  Both are subclasses of Generator and Speculate.  Both can call out to external functions, both can store hints and other data as keys, and both can define and run macros.  Both can create ad-hoc methods on the object.  Both can be cloned (EvalGen doesn't have a method, but you can copy a clone of @local by hand).  The only difference is in the method nextValue().  Factory calls a macro called :nextValue, whereas EvalGen execs a string.
+
+What I'm really talking about here is the paradigm that each implies.
+
+Factory implies that functionality is stored in the object as macros.  EvalGen implies that the functionality is defined as functions external to the object.
+
+In ruby, functions are globally visible.  This means you can define them in load-files.  You can call them from other functions or from methods.  Any Speculate object can call the function using [:eval .  You can't directly bind a function to a key in a Factory.  The best you can do is bind a string that calls the function ( factory.local[ :key ]="fn()" or  factory.speculate( [:let, :key, "fn()" ], and later call the function using [:eval, [:get, :key] ] .  Functions can't be cloned.  Functions (in ruby) can't be built up using meta-programming (unlike other programming languages like lisp or javascript).
+
+If you are using Factories, these factories are objects bound to variables.  If you bind to a local variable, then ruby will not let you create them in a load-file, you cannot access the variable from a function or a method (you have to pass them in as arguments).  You can't reference them from [:eval.  You can bind them to a key in the Factory ( local[ :key ]=factory, or [:let, :key, factory ] ).  Then you can activate the factory, eg [:valueOf, [:get, :key ] ].   Factories can be cloned, which helps with code-reusage.  Factories are good candidates for meta-programming.
+
+You can bind a Factory or EvalGen to a global variable ($factory) or a constant (NoteFactory).  You can also make it a value in a global constant like Hints, eg Hints[ :noteFactory ]=mkfactory( ... ).  If you do that, you can create the factory in a load-file, or reference it from a function or a method.  
+
+Some might see all this as a statement of the obvious, and to others it will look like a tedius bunch of irrelevant stuff.  But in practice, it makes a big difference because it changes the way you organise and manage your code.  This will become more obvious with experience.
+
+In terms of code management, the biggest irritation with factories is ruby's rules about local variables. (And only because I avoid creating lots of adhoc classes, and I avoid global variables because I find the syntax ugly.  On reflection, constants is probably a good solution.)
+
+In 2020, when I was using Factory exclusively, and not using EvalGen with functions and hints, the way I solved it was to have an extra layer of pre-processing.  I would put the definition of useful Factories into include files, and have a special #include statement in my ruby where I wanted the include file to go.  I wrote a pre-parser that detected the #include statements and built up the final ruby script programmatically.  This proved fairly successful.  I don't like long source-code files, and it was a nice way to factor out re-usable generic definitions.
+
+When I published my scripts to git-hub, I stopped doing that because I didn't want users to have to install and run the preparser, or have to learn how to use (and debug) stuff that used #includes.
+
+On reflection, a good solution is to assign useful factories to Constants, which can be created in load-files and referenced inside functions.
+
+
+Genetic Programming
+-------------------------------------
+You can use Factories to do genetic-type programming.
+
+You can think of the keys in @local as the genes, and the macros as the way those genes are expressed.  Or you can think of the macros as genes as well.
+
+So the factory becomes like the DNA.  The macros determine how the DNA is expressed.
+
+If you have two "individuals", with similar DNA, having common types of genes and common ways of expressing the genes, then those individuals can produce offspring
+
+	mate( individual1, individual2 )
+
+		returns new individual, whose DNA is a combination of the DNA from individual1 and individual2
+
+
+Here is an example:
+
+	parent1=mkfactory(
+		[:let,
+			:duration,	0.2,
+			:tonic,		40.0,
+			:scale,		[:make, EqualTemperedScale, [ 6 ] ],
+			:minFreq,	40.0,
+			:maxFreq,	300.0
+		],
+		[:macro, :oscShape,
+			[:make, Sine]
+		],
+		[:macro, :envShape,
+			[:make, Triangle, [ 0.1 ] ]
+		],
+		[:macro, :makeMelody,
+			[:make, 
+				KeyMeander, 
+				[ 
+					[:make, Key, [ [:get, :tonic], [:get, :scale] ] ],
+					[:get, :minFreq],
+					[:get, :maxFreq]
+				]
+			]		
+		],
+		[:macro, :nextValue,
+			[:make,
+				Note,
+				[
+					[:make, Oscillator, [ [:run, :oscShape] ] ],
+					[:make, Envelope,	[ [:run, :envShape] ] ]
+				],
+				:duration,	[:get, :duration],
+				:trigme,		[:pitch, [:run, :makeMelody] ]
+			]		
+		]
+	 )
+
+	parent2=parent1.cloneme(
+		[:let,
+			:duration,	0.1,
+			:tonic,		50.0,
+			:scale,		[:make, EqualTemperedScale, [ 12 ] ],
+			:minFreq,	80.0,
+			:maxFreq,	600.0
+		]
+	 )
+
+	def mate( parent1, parent2 )
+		child=parent1.cloneme(
+			:duration,	chooseFrom( parent1.local[ :duration ], parent2.local[ :duration ] ).
+			:tonic,	chooseFrom( parent1.local[ :tonic ], parent2.local[ :tonic ] ).
+			:scale,	chooseFrom( parent1.local[ :scale ], parent2.local[ :scale ] ).
+			:minFreq,	chooseFrom( parent1.local[ :minFreq ], parent2.local[ :minFreq ] ).
+			:maxFreq,	chooseFrom( i1.local[ :maxFreq ], i2.local[ :maxFreq ] ).
+		 )
+	end
+
+	child1=mate( parent1, parent2 )
+	child2=mate( parent2, parent1 )
+		.. etc
+
+
+If you start off with a good-sized population (10 or more individuals),
+	and continue to mate individuals, you can end up with a large number of possible notes and melodies
+
+You can have two separate populations, that are used to generate different sections of music.
+
+You can have two separate populations, and slowly interbreed them as the piece progresses.
+
+.. and so on.
+
+
+Mutation
+---------
+You can introduce "random genetic mutation" by allowing individuals to re-calculate aspects of their dna.
+
+eg:
+
+	individual.speculate(
+		:duration, [:random, :freq, 0.09, 0.35 ]
+	 )
+
+
+Influencing and following
+-------------------------
+
+You can use a similar technique to model the way performers improvise with each other.
+
+Any performer can introduce a new idea, a change in tempo, key or style,
+  and other performers can choose how to adjust to the new material.
+  They can ignore it, or copy it, or modify it.
+
+In practice, each performer is constantly paying attention to the other performers, and adjusting their performance depending on what the others are doing.
+
+
+For example:
+
+	performer=mkfactory( ... )
+
+		each performer stores a list of all the other performers, and maybe a preference for which ones they will follow.
+
+		each has the following macros:
+
+			:change		choose a setting/key, and randomly alter its value
+			:follow		choose a setting/key and another performer.  change your value to be the same as or closer to that performer's value
+
+
+You can see how using this technique introduces a type of structure to the music.  Remember, I think of structure as the way the music changes over time.
+
+
+
+Finite State Machines
+----------------------
+
+You can use a Factory to build a Finite State Machine.
+
+The states are represented as macros, and :nextValue changes the state (or keeps it the same).
+
+eg
+	fsm=mkfactory(
+		[:set, :state, [:choose, :from, 0, 1, 2, 3 ] ],		# intialise the current state
+
+		[:macro, 0,
+			[:set, :state, [:choose, :weighted, 0, rand, 1, rand, 2, rand, 3, rand ] ],	# change state for next time
+			[:run, :do0]
+		],
+		[:macro, 1,
+			[:set, :state, [:choose, :weighted, 0, rand, 1, rand, 2, rand, 3, rand ] ],	# different weights to 0
+			[:run, :do1]
+		],
+		[:macro, 2,
+			[:set, :state, [:choose, :weighted, 0, rand, 1, rand, 2, rand, 3, rand ] ],
+			[:run, :do2]
+		],
+		[:macro, 3,
+			[:set, :state, [:choose, :weighted, 0, rand, 1, rand, 2, rand, 3, rand ] ],
+			[:run, :do3]
+		],
+
+		[:macro, :do0, ... ],
+		[:macro, :do1, ... ],
+		[:macro, :do2, ... ],
+		[:macro, :do3, ... ],
+
+		[:macro, :nextValue,
+			[:run, [:get, :state] ]
+		]
+	 )
+
+
+
+
+4. Chords based on Scales
+=========================================
+
+SnM considers a chord to be just a scale.  It doesn't differentiate between the two.
+
+For example,
+
+	HarmonicsScale.new( 5 )			is a major chord
+	HarmonicsScale.new( 7 )			is a dominant 7th chord
+	HarmonicsScale.new( 9 )			is either a 9th chord, or a kind of pentatonic scale
+	HarmonicsScale.new( 13 )		is a 7-note scale
+
+
+However, in musical terms, you can start with a scale and build a number of chords based on that scale.
+
+Technically speaking, any subset of notes from the scale is a chord.
+
+
+make chords using ClosestScale
+--------------------------------
+You can use ClosestScale to produce chords from a scale.  You need to supply the scale, the root position, and a chord template.
+
+For example
+
+	scale=EqualTemperedDiatonicScale.new()
+	
+	chordTemplate=HarmonicsScale.new( 5 )		# ie, major chord
+
+	chord=ClosestScale.new( scale, 1, chordTemplate, :closestBelow )	# :closest, :closestBelow or :closestAbove
+											# 0 is the root, so 1 means the 2nd position of the scale.
+
+		returns a chord, based on the 2nd position of the scale, and using scale notes close to a major chord.
+
+
+If we imagine we are using C as the tonic, then we now have a Dmin chord.   Even though we used a major chord as the template, :closestBelow turns it into a minor chord.
+
+An easy way to get minor or major chords as appropriate is to use a chord template that is half-way between major and minor, and use :closest as the closeness setting.
+
+	halfwayChord=Scale.new( 1.0, 1.22, 1.5 )	# halfway between minor and major triad
+
+
+You can use ClosestScale to get chords based on any kind of scale-type at all.  It doesn't need to be something from Western musical tradition.  Using major or minor chords as the template just gives you a good, consistent spacing, irrespective of the intervals between each note in the scale.  Keep in mind that some scales might have consecutive notes that are micro-tones apart, and other notes that are much further apart.  Just skipping scale notes will produce chords that have inconsistent spacing (which might be okay, considering the scale does too, but that's your choice). 
+
+
+Note that ClosestScale might return a chord with less notes than the template has.  This will occur when the closest scale note for one note in the template is equal to the the closest scale note for some other note in the template.  For example, if the spacing in the template is narrower than the spacing of the notes in the scale.
+
+
+chord templates
+----------------
+I usually stick with major/minor triads as the chord template because I like the spacing.  Certain classes have methods that can give you useful chord templates:
+
+	DiatonicScale.new.majTriad()	# major triad based on harmonic series
+	DiatonicScale.new.minTriad()	# minor triad based on harmonic series
+
+	ScaleChordKey
+		majorTriad()		# wrapper for DiatonicScale.new.majTriad()
+		minorTriad()		# wrapper for DiatonicScale.new.minTriad()
+		sixSeven()			# random 4-note chord, consisting of either a minor or major triad, 
+								#   plus a random note somewhere between a 6th and a 7th.
+								# a random chord, but when used as a chord template, the randomness doesn't matter.
+								#  you get whatever notes the scale can give you.
+
+
+You don't have to use a triad as the chord template.  Any number of notes can be in the chord template.  Just be aware that the number of notes returned by ClosestScale will depend also on the scale.  You can easily end up with less notes in the resulting chord than there are in the chord template. 
+
+
+
+ScaleChordKey
+---------------
+ScaleChordKey < Generator
+
+nextValue() returns a key, representing a chord at a specific position of a base key.
+
+eg:
+
+	chordGenerator=make(
+		ScaleChordKey,
+		[
+			key,			# the underlying key.  sets @key
+			0				# the chord position, sets @chordAt.  0 means root position
+		],
+
+		# optional, but illustrating the usage:
+			:chordType,		ScaleChordKey.new.majorTriad(),		# the default
+			:closnessMode,	:closest,				# the default
+			:key,				key,			# set by the first argument, above
+			:chordAt,		0				# the default.  This is initialised by the second argument above
+	 )
+
+	chordGenerator.nextValue()
+		returns a Key, representing the closest chord to a major triad, at the root position.
+
+You should be aware that a chord is just a Scale.
+
+To use the chord, you need to supply a tonic.
+The tonic of the chord is not the tonic of the scale you based the chord on.
+
+So, if you have a key (say C major), and create a chord from that key (say D minor), then the Key representing the chord has D as the tonic, not C.
+
+ScaleChordKey automatically does all those calculations.  Not only does it find the correct notes to form the chord, it also returns a Key with the correct tonic. 
+
+
+KeyAndChord
+------------
+KeyAndChord < Key
+
+This is a utility class.  It is used to hold the current key, and the current chord, so any melody can keep up with changes in key or chord.
+
+It is just a key, but it has an extra property, 
+		@currentChord, which is a ScaleChordKey that returns the current chord.
+
+methods:
+ 	chordAt( index )			# changes the chord. index is index into the key's scale. 
+							# if @currentChord is nil, it creates a new ScaleChordKey and stores it in @currentChord
+							# otherwise, it just modifies @currentChord's :chordAt
+
+	currentChord   # returns @currentChord, which is a ScaleChordKey, that provides the current chord (as Key)
+						# default settings are	closenessMode=:closest, chordType=majorTriad()
+
+	chord				# convenience method.  returns @currentChord.nextValue
+
+
+The reason for having both chord and currentChord is that you often need a Generator for :trig
+
+	# chord change
+	:trig, [ keyAndChord,		:chordAt,	[:make, RandomInteger, [ 0, key.multipliers.length-1 ] ] ],
+
+	# arpeggio uses the new chord
+	:trig, [ arpeggioMelody,	:key, 		keyAndChord.currentChord ]		# the generator
+
+	This is no good:
+
+		:trig, [ arpeggioMelody, :key, keyAndChord.chord ]			#  the current value
+
+			because it will create a trig that has key set to whatever the value of keyAndChord.chord was at the time.
+
+
+	keyAndChord.chord is just a convenience to save typing keyAndChord.currentChord.nextValue
+
+
+
+
+
+The Album
+-----------
+
+I wrote the script incrementally over a three week period.  I started with a blank script, but used some of the load files left over from  202102.the.event, (used to create the previous album ).
+
+As I developed different ideas, I factored out useful function definitions to external load files.  I went through about 30 intermediate versions until I ended up with the version you see in the release.
+
+Once the final version of the script was completed, it took about two days to render the album, using a $300 laptop I bought second hand a few years ago.  The rendering happens on its own.  No hand-holding is neccessary.
+
+
+
