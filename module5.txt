@@ -1,0 +1,1115 @@
+
+
+Welcome to the fifth module in the fake.music and SnM blog.
+
+
+
+Module 5.  Euclid
+=============================================================
+
+The plan for this album is:
+
+   About 40 minutes of sound. (Standard length for an LP record)
+
+   Each track about 2 minutes long.
+
+   Make use of Euclidean Rhythms, Tempo and changing Chords.
+
+
+
+
+In this module, I will cover the following themes
+
+	1. Euclidean Rhythms
+	2. Tempo and Swing
+	3. Chords and Arpeggios
+	4. Samples
+	5. trig Gotcha (and a solution)
+
+
+
+1. Euclidean Rhythms
+=============================================================
+According to history, thousands of years ago a Greek mathematician called Euclid developed an algorithm for finding the lowest common denominator of two integers.  I remember learning this algorithm when I was in primary school.
+
+In 2005, Godfried Toussaint published a paper called "The Euclidean Algorithm Generates Traditional Musical Rhythms".
+
+When I discovered this paper, I was immediately impressed. Firstly that it had taken thousands of years for someone to realise that this was possible.  Secondly, this was obviously a "non-musical process which generates what sounds like music", which is the mission of the fake.music project.
+
+I haven't explored everything that Godfried discusses in his paper, but I've found these rhythms extremely useful and fruitful.
+
+In SnM, I have implemented a class to generate these types of rhythms.
+
+	class EuclidRhythm < Generator
+
+		all the arguments to initialize() are optional
+
+eg
+	euclid=make(
+		EuclidRhythm,
+		[
+			8,					# beatsPerBar
+			3					# hitsPerBar
+		]
+	 )
+
+	euclid will generate the rhythm   /// /// //  ( where /// means a note three beats long and // means a note two beats long ). This rhythm is common in rock music from the 70s.  There are 8 beats in the bar, and there are 3 notes in the rhythm.
+
+A Euclidean Rhythm divides the bar into hitsPerBar segments.  There are long segments and short segments, and all the long segments come first, followed by the short segments.  Furthermore, the length of the long and short segments are as close as possible to each other.
+
+In the current implementation, the long segments start at the first beat of the bar.  Other variations are possible, but I haven't explored them yet.
+
+In practice, there are a number of different ways you might want to use Euclidean Rhythms, and this class has a number of different "modes" to fit these different usage patterns.
+
+eg
+	euclid.patternMode=:hits
+
+eg
+	make(
+		EuclidRhythm,
+		[ 8, 3 ],
+		:patternMode, :hits
+	 )
+
+The patternModes are:
+
+	:hits
+	-------
+		returns an Array of length beatsPerBar
+		the array element is either @hit or @rest depending on whether a segment starts on that beat.
+		by default, @hit=:hit and @rest=:rest
+
+		so for our example `euclid', above  the result would be:
+
+			[ :hit, :rest, :rest, :hit, :rest, :rest, :hit, :rest ]
+
+		the caller would then need to interpret :hit and :rest as appropriate.
+
+		or, if you had a drum sample, you could do
+
+			drum=make( Dampen, [ drumSample, 0.1 ], :duration, beatLen )
+			rest=make( Duration, [ beatLen ] )
+			euclid=make(
+				EuclidRhythm,
+				[ 
+					8, 3,
+					drum,				# sets @hit
+					rest				# sets @rest
+				],
+				:patternMode, :hits,
+
+				# an alternative way to set @hit and @rest
+				:hit,	drum,
+				:rest, rest
+			 )
+
+		euclid.nextValue returns
+			[ drum, rest, rest,   drum, rest, rest,   drum, rest ]
+
+		So, for example:
+
+			seq=euclid.nextValue
+			drumPattern=make( Sequence, [ *seq ] )
+
+	:snare
+	-------
+		is exactly the same as :hit, except that the first element of the array is @rest, not @hit
+
+		eg:
+			euclid=make(
+				EuclidRhythm,
+				[ 
+					5, 		# 5/4 time signature
+					1,			# one hit of the snare
+					snare,			# lasts exactly one beat
+					rest				# lasts exactly one beat
+				],
+				:patternMode, :snare,
+			 )
+			snarePattern=make( Sequence, [ *euclid.nextValue ] )
+
+	:beats
+	-------
+		returns an Array hitsPerBar long, which contains the lengths in beats of each segment
+
+		eg:
+			euclid=make(
+				EuclidRhythm,
+				[ 8, 3 ],
+				:patternMode, :beats
+			 )
+
+		euclid.nextValue returns [ 3, 3, 2 ]
+
+		Because this is the durations in beats, this mode is useful in combination with Tempo, which we deal with later.
+
+
+	:durations
+	-------
+		similar to :beats, but the lengths are in seconds.  
+		requires @beatLen to be set
+
+		eg:
+			euclid=make(
+				EuclidRhythm,
+				[ 8, 3 ],
+				:patternMode,	:durations,
+				:beatLen,		0.15
+			 )
+
+		euclid.nextValue returns [ 0.45, 0.45, 0.3 ]
+
+		eg:
+			rhythm=make( SequenceGenerator, [ euclid.nextValue ] )
+			note=make(
+				Note, [ ... ],
+				:trigme, [ :duration, rhythm ]
+			 )
+
+The following setable keys are available, and the corresponding accessors are available
+
+	:beatsPerBar, :hitsPerBar, :hit, :rest, :patternMode, :beatLen
+
+	eg
+		euclid.hitsPerBar=2
+		euclid.nextValue
+
+nextValue() uses various methods that can be called by themselves to get the underlying pattern types,
+ and these methods can be called at any time, with any parameters you like
+
+	eg
+		durations=euclid.makeDurationsPattern( 5, 2, 0.1 )		# beatsPerBar, hitsPerBar, beatLen
+
+
+For examples of euclidean rhythms in practice, check out the sample code that comes with this module.
+
+
+
+2. Tempo and Swing
+=============================================================
+Tempo is a class that keeps track of beats.
+
+	Tempo < Tickable
+
+A Tempo will autotick by default, so you don't have to "plug it" into anything for it to work.
+
+eg:
+
+	tempo=make( Tempo, [ 144 ] )		# 144 beats per minute (bpm)
+
+Once created, a tempo will keep track of the progress of beats by continuously incrementing @beatSum, which is a float.
+
+The current beat number is
+
+	tempo.beatNo
+
+		which is tempo.beatSum.floor
+
+an alias for beatSum is upto
+
+	tempo.upto
+		same as tempo.beatSum
+
+You can set the current beatSum, which has the side-effect of resetting the beatNo:
+
+	tempo.upto=0.0		# resets beat count to 0
+
+
+Setable keys:
+
+	:bpm			# sets beats per minute
+
+You can continuously control the tempo, eg:
+
+	tempo.ctl[ :bpm ]=
+		make(
+			Oscillator,
+			[],
+			:minValue,	100,		# min of 100 bpm
+			:maxValue,	200,		# max of 200 bpm
+			:duration,	10			# cycles the tempo change every 10 seconds
+		 )
+
+
+tempo's bpm is similar to pitch or frequency in that a logarithmic scale is usually more appropriate.
+
+So a better bpm control would be:
+
+	make(
+		Multiplier,
+		[
+			100,				# min bpm
+			[:make,
+				Factor,
+				[
+					[:make,
+						Oscillator,
+						[],
+						:minValue,  0.0,
+						:maxValue,	1.0,		# doubles it
+						:duration,	10
+					]
+				]
+			]
+		]
+	 )
+
+
+Using tempo.
+------------
+
+There is a class
+	TempoProgressor < Progressor
+
+	which implements a Tickable that syncronises to a Tempo.
+
+As it turns out, all the duration-based classes we have been using subclass from TempoProgressor.
+
+So classes like Duration, and Envelope understand Tempo.
+
+Furthermore, Tickable classes that take an input can pass tempo information onto their input.
+So classes like Note, Mixer, Channel and so on.
+
+The method is using( tempo )
+
+eg
+	make(
+		Duration,
+		[ 1 ],
+		:using, tempo			# 1 now means 1 beat, not 1 second
+	 )
+
+	make(
+		Note,
+		[
+			osc,
+			env
+		],
+		:using, tempo			# will cause env to use tempo
+	 )
+
+
+Or, for an existing progressor:
+
+	note=make( ... )
+	note.using( tempo )
+
+
+Any TempoProgressor using a Tempo will automatically adjust to changes in bpm.
+
+So this will work:
+
+	accelerate=make(
+		Envelope,
+		[
+			[:make, Triangle, [ 1.0 ] ]
+		],
+		:minValue,	100,	# starting bpm
+		:maxValue,	200,	# ending bpm
+		:duration,	16,	# beats
+		:using, 		tempo,
+	 )
+
+	tempo.ctl[ :bpm ]=accelerate
+
+		the tempo will accelerate from 100 bpm to 200 bpm, in the space of 16 beats, even though the length of the beats is constantly changing.
+
+
+You can have any number of concurrent Tempos in operation, with different sound events using different tempos.
+
+
+pulsesPerBeat
+-------------
+By default, @pulsesPerBeat is 1.
+
+If you set this to an integer ( >=1 ), then the duration is now measured as pulses, which are divisions of a beat
+
+eg
+
+	note=make(
+		Note,
+		[ osc, env ],
+		:duration,			1,
+		:pulsesPerBeat,	3,
+		:using, 				tempo
+	 )
+
+This note has 3 pulses per beat (triplets), and it's duration is 1 triplet.
+
+You can also configure it like this:
+
+	note=make(
+		Note,
+		[ osc, env ],
+		:duration,			1,
+		:using, 				[ tempo, 3 ]		# 3 pulses per beat
+	 )
+
+ or:
+
+	note=make( ... )
+	note.duration=1
+	note.using( tempo, 3 )
+
+
+
+How it works
+--------------
+
+First, you need to understand that most duration-based classes can swap between durations based on seconds and durations based on beats of a Tempo.  I don't recommend you do that, by the way, but it is possible so long as you're careful about the details.
+
+With a Progressor (duration is based on seconds), the object keeps track of its @progress, which starts at 0.0 and goes up to 1.0.  As soon as @progress reaches 1.0, the progressor stops.  Whenever you change the duration, it changes how much @progress is incremented at each tick.
+
+With a TempoProgressor (duration is based on beats of a Tempo), the mechanism is quite different.
+
+	Everything is calculated at the start of the note.
+
+		1. it figures out where the tempo is upto now
+
+				startPoint=tempo.upto
+
+		2. it adds the duration to the start value to get the end value
+
+				endPoint=startPoint + ( duration / pulsesPerBeat.to_f )
+
+	So at each tick it just checks tempo.upto, and as soon as it is greater than endPoint, it stops.
+
+The endpoint calculations are done by the method resetEndPoints(), which is called by:
+	start()
+	using()
+
+You can recalculate the endpoints by using the method resetEndPoints(), or the setable key :resetEndPoints
+
+Note that duration= doesn't reset the end points, so set the duration before doing using(), or run resetEndPoints() after setting the duration.  Similarly, setting pulsesPerBeat by itself won't recalculate the end points.
+
+
+If you're using trig() to update the duration, you don't need to worry about that because of the order of operation within the start() method.
+
+
+That's the simple explanation.  There are some extra details.
+
+
+snapToPulse
+-----------
+At the start a tempoProgressor can snap-to-grid.  The grainyness is @pulsesPerBeat, which is an integer division of the tempo's own beat.
+
+What this means is that the *nominal* starting point isn't the actual tempo.upto, it's the start of the closest pulse to the current beat.
+
+The *actual* end point is then calculated relative to the nominal starting point.
+
+The reason for this is that sometimes rounding errors can cause the durations to shift a little, especially if different voices have different durations.  With snap-to-grid, the durations can be constantly brought back to the real tempo.
+
+The setable keys are:
+
+	:snapToPulse			true or false.  true by default
+	:pulsesPerBeat			a positive integer. default is 1
+
+
+adjusting the endpoint
+----------------
+
+You can micro-adjust the duration with a setting: endOffset.
+
+This is an offset as a fraction of a pulse, and is added to the endpoint in step 2. above.
+
+	endPoint=startPoint + ( duration + endOffset ) / pulsesPerBeat.to_f
+
+
+Thus you can make the note end slightly early or slightly late.
+
+You can use this to effect the "tightness", "feel" or "groove" of the performance, 
+
+For example a band late at night where half the members are tired and slightly drunk:
+
+	make(
+		Note,
+		[ .. ],
+		:trigme,		[:endOffset, [:make, RandomFloat, [ -0.4, 0.4 ] ] ]
+	 )
+
+By altering the end-point, you alter the start of the next note.  The listener won't really notice the end being off-beat, but they will notice the start of the next note being off-beat.  Also remember that with snapToPulse, the nominal start point will be on-beat, irrespective the actual start of the sound event.  In other words, even though the notes are all over the place, they still manage to keep up with the tempo over time (so long as the endOffset is within the range -0.5, 0.5 )
+
+
+Swing
+------
+Swing < Tempo
+
+A Swing emulates a Tempo.
+  it piggy-backs an actual Tempo, and splits each of that tempo's beats into two pulses of different lengths
+       these un-equal pulses become the beat for the Swing.
+
+eg
+	tempo=make(
+		Tempo,
+		[ 60 ]		# 60 bpm, so each beat is 1 second long
+	 )
+	swing=make(
+		Swing,
+		[
+			tempo,
+			0.66		# swing factor.  The first note of each pair is this fraction of tempo's beat.
+		]
+	 )
+
+This will create a tempo where the beats alternate between 2/3 and 1/3 second in length.
+
+Thus,
+
+	note=make(
+		Note,
+		[ osc, env ],
+		:duration,	1,
+		:using,		swing
+	 )
+
+	stream=make( Stream, [ note ] )
+
+is a stream of notes with a triplet rhythm  ( // / )
+
+You can change the swing factor dynamically.  Some 70s rock plays around with the swing, with either the whole band, or individual members, shifting back and forth between straight (0.5) and triplet (0.66) swing.
+
+In some early rock, the drummer might be using a swing of 0.6 on the ride cymbal ( ie, divide the beat by 5, the notes are in 3 : 2 ratio - /// // )
+
+Swing factor of 0.75 gives a "skipping" rhythm (divides the beat into 4  /// / )
+
+
+
+3. Chords and Arpeggios
+=============================================================
+
+I introduced the concept of chords in the previous module.  Read the previous module to get more detailed and in-depth discussion of chords and keys.
+
+The relevant class is:
+
+	KeyAndChord < Key
+
+ which provides both the current key (for melodies), and the current chord (for arpeggios and chords)
+
+	
+Internally, it uses
+
+	ScaleChordKey < Generator
+
+		to produce chords based on a key.
+
+eg
+
+	keyAndChord=make(
+		KeyAndChord,
+		[ 
+			key 
+		],
+		:chordAt,	0		# initially, triad at the root position
+	 )
+
+	keyAndChord 					is a Key, with a tonic and a scale
+	keyAndChord.currentChord	is a generator that provides the current chord as a Key, with its own tonic and scale
+
+
+arpeggios
+----------
+One way to get arpeggios is to construct a repeating Sequence (ie, a Stream), with the pitches specified explicitly.
+If you have chords that are changing, you would need a different sequence for each chord.
+
+On the other hand, if you use PitchBend or a Note with an Oscillator, then you can change the pitch bend for each chord change.  Of course, this will only work if every chord is the same type (eg, a power chord, or a major chord).
+
+
+For the fake.music project, I don't want to manually construct sequences of pitches, because I want to use non-musical processes (or algorithms) that are independent of, for example, time signature.
+
+
+arpeggios using KeyScaleRun
+----------------------------
+My go-to method for arpeggios is to use a KeyScaleRun
+
+eg
+	# create a Key specifically for the arpeggios, so we can change it later
+	arpeggioChord=make( Key, [], :key, keyAndChord.chord )
+
+   melody=make(
+      KeyScaleRun,
+      [
+         arpeggioChord,
+         minFreq, maxFreq			# range of the arpeggio, a bit over an octave is good
+         0.0                     # probability of reversing direction
+      ]
+    )
+
+By setting @probReverse as 0.0, the melody will not change direction until it hits either the min or max freq.
+
+Thus we get a melody that does a "scale run" on the notes of a chord, and it will just keep going up and down between its frequency limits.
+
+The full stream looks like this:
+
+	note=make(
+		Note,
+		[
+			osc,
+			env
+		],
+		:duration,	1,		# one pulse
+		:using,		[ tempo, pulsesPerBeat ],
+		:trigme,		[:pitch, melody]
+	 )
+	arpeggioStream=make( Stream, [ note ] )
+
+
+
+The disadvantage of this approach is that the arpeggio will not always fit neatly into a bar length.
+
+You can force scale-run to restart at the beginning of the bar, so each bar then gets the same pattern:
+
+eg
+   arpeggioRestart=make(
+      Occasional,
+      [ beatsPerBar ],			# duration is 1 bar
+      :tickedBy,	arpeggioStream
+      :using,     tempo,
+      :endOffset, -0.02,		# restart slightly early, in case the arpeggio comes in 1 or 2 ticks early
+
+      :trig,      [ melody, :restart ],		# KeyScaleRun responds to :restart
+    )
+	
+	this occasional will automatically restart the arpeggio at the beginning of each bar.
+
+To make the arpeggios keep up with chord changes (or key changes), you need something like this:
+
+	chordChange=make(
+		Occasional,
+		[ beatPerBar*2 ],		# change chord every 2 bars
+		:using,     tempo,
+		:tickedBy,  tempo,
+
+		# change chord
+		:trig,      [ keyAndChord, :chordAt, [:make, RandomInteger, [ 0, keyAndChord.scale.multipliers.length-1 ] ] ],
+
+		# pass the chord change onto everything that needs to know about it
+		:trig,      [ arpeggioChord, :key, keyAndChord.currentChord ],
+
+		:doTriggers				# initialise everything
+	 )
+
+Because the arpeggio melody uses arpeggioChord as its Key, it will automatically play the new chord whenever it is changed.
+
+
+arpeggios using KeyMelodicArc
+-------------------------------
+
+An alternative approach is to use a KeyMelodicArc that gives the shape of the arpeggio, as well as the length (eg, one bar).  The disadvantage of KeyMelodicArc is that you can get repeated notes if the melodic arc is moving too slowly for the number of notes in the chord.  The advantage is you can specify the arpeggio shape and length explicitly.
+
+
+chords
+-------
+
+The word "chord" has two different meanings.
+
+	1. A named chord like B major 7th.  SnM implements this as a Key
+
+	2. The actual notes played by a performer. (The chord shape or voicing)
+
+To implement this meaning in SnM, you would probably use a Mixer or a Mix, with one sound source to represent each guitar string, or each keyboard key.
+
+When the chord changes, you have to re-set the pitch on each of those sources.
+
+SnM implements a class Fretboard to manage a Mixer of strings that represent a played chord.
+
+	Fretboard < Mixer
+
+eg
+
+	fretboard=make(
+		Fretboard,
+		[
+			6,			# number of strings
+			80.0,		# basePitch
+			4.0/3.0,	# interval between each string.  a perfect 4th by default
+		],
+		:addStrings,
+
+			# addStrings needs a :spec, because it needs to build a new source for each string
+			[:spec,
+				Note,
+				[
+					[:spec, Oscillator, [] ],
+					[:spec, Envelope,	[ [:spec, AttackDecay, [] ] ]
+				]
+			]
+
+		# or, you can use a factory:
+		:addStrings, [:valueOf, stringFactory]
+				# stringFactory will need to return either a new source, or a spec each time it's invoked
+
+		# or, you can just add the strings manually
+		:input,	strings
+	 )
+
+This creates a Mixer.   
+	:addStrings ( or fretboard.addStrings( noteSpec ) ) makes the individual sound sources for the Mixer.
+		if you wanted to, you could manually add the individual sources yourself:
+
+			fretboard.input=strings
+
+
+	noteSpec can be the :spec for a Note or a Source. (Or equivalents, such as Shorten, Channel, etc)
+	If it's a Note, then the fretboard will stop when all the notes have stopped.
+	If it's a Source, then the fretboard will not stop.  You will need to wrap the fretboard itself in a Note.
+
+
+If you don't want all the strings to have the same spacing between them, you can set them manually:
+
+	fretboard.openPitches=pitchArray		# defines the individual open string pitches
+	fretboard.redoPitches()					# applies the pitches to the "strings"
+
+ or, using setable:
+
+	:openPitches,	pitchArray,
+	:redoPitches
+
+
+To play a chord on this fretboard, do
+
+eg
+	fretboard.changeChord( chordAndKey.chord )		# ie, the chord, as a Key
+
+For each string, it finds the closest chord note above the open string pitch, and makes that the pitch for that source.
+
+Because the fretboard is a Mixer, you can set it's duration, or make it use a Tempo.
+
+eg
+	chordStream=make(
+		Stream,
+		[
+			fretboard			# assuming it uses notes for its strings
+		],
+		:trig,	[ fretboard, :duration,	rhythm  ]
+		:trig,	[ fretboard, :vol,		accents ]
+	 )
+
+	# chordChange example, from previous section
+   chordChange=make(
+      Occasional,
+      [ beatPerBar*2 ],    # change chord every 2 bars
+      :using,     tempo,
+      :tickedBy,  tempo,
+
+      # change chord
+      :trig,      [ keyAndChord, :chordAt, [:make, RandomInteger, [ 0, keyAndChord.scale.multipliers.length-1 ] ] ],
+
+      # pass the chord change onto everything that needs to know about it
+      :trig,      [ arpeggioChord,	:key,				keyAndChord.currentChord ],
+      :trig,      [ fretboard, 		:changeChord,	keyAndChord.currentChord ],
+
+      :doTriggers          # initialise everything
+    )
+
+
+fretboard also has a method 
+
+	daCapo( interval )
+
+		which moves all the open string pitches up or down by the same interval (a floating point number that gets multiplied with each pitch).
+
+
+4. Samples
+=============================================================
+We have already seen Samples in previous modules, where they were used to capture the output of sound events.
+
+Sample can also read from external files.  Currently, only raw soundfiles are supported, with the same properties as the soundfiles output by SnM.
+
+eg
+
+	sample=make(
+		Sample,
+		[],
+		:fromFile,	pathToFile		# as a string.
+	 )
+
+You can then wrap the sample in a Dampen if you need it to have a specific duration,
+
+eg
+	dampedSample=make(
+		Dampen,
+		[
+			sample,
+			0.12			# fade out the last 12 percent
+		],
+		:duration,	2,		# two beats
+		:using, 		tempo,
+	 )
+
+
+You can create a new Sample, based on an existing sample.
+
+This way, you can add new samples to a Mix, without worrying about how long they are:
+
+	mix=make(
+		Mix,
+		[],		# empty for now
+		:removeInputOnComplete,	true,
+		:stopOnInput,				false
+	 )
+
+	# a generator that creates a new sample and adds it to the mix
+	addToMix=mkfactory(
+		[:let,
+			:template,	sample,
+			:mix,			mix
+		],
+		[:macro, :newSample,
+			[:make,
+				Sample,
+				[],
+				:fromSample, [:get, :template]		# new sample, based on the template sample
+			]
+		],
+		[:macro, :nextValue,
+			[:eval,
+				"@local[ :mix ].add( run( :newSample ) )"
+			]
+		]
+	 )
+
+	# an occasional that adds new samples to the mix
+	adder=make(
+		Occasional,
+		[],
+		:trigtrace,	"adding new sample",
+		:trigme,	[ :wait,	rhythm ],		# rhythm determines how long between each new sample
+		:trig,	[ addToMix, :nextValue ],
+		:doTriggers								# add first sample, and initialise @wait period
+	 )
+
+
+
+5. trig Gotcha
+=============================================================
+
+There is a "gotcha" in the use of trigs, which I will explain, and present some solutions for.
+
+start()
+--------
+First, recall that there is a class Stopable, which implements all event types in SnM.
+
+A Stopable starts and stops.  There is a method start() ( also called restart() ) to explicitly start the Stopable.
+
+A Stopable will also start as part of its initialization. (In Ruby, an object runs the method initialize() when it gets created).
+
+
+trig()
+-------
+Next, recall the method trig().  This is implemented by Stopable, and it enables you to run set() on an arbitrary object whenever the Stopable restarts/starts.
+
+
+starting inputs
+----------------
+Next, understand that whenever a Stopable takes an input, it will start the input as part of its own start() method. (Normally you can configure this behaviour).
+
+
+gotcha
+--------
+So what is the "gotcha"?
+
+
+Here is an example:
+
+	pitchArray=[ 100, 110, 120, 130, 140 ]
+	durationArray=[ 0.2, 0.1, 0.2, 0.1, 0.6 ]
+
+	melody=make(
+		SequenceGenerator,
+		[
+			pitchArray
+		]
+	 )
+	rhythm=make(
+		SequenceGenerator,
+		[
+			durationArray
+		]
+	 )
+
+	# create note
+	note=make(
+		Note,
+		[
+			osc,
+			env
+		],
+		:trigme, [:pitch, melody],
+		:trigme, [:duration, rhythm]
+	 )
+
+	# create stream
+	stream=make(
+		Stream,
+		[ note ]
+	 )
+
+	# create piece
+	piece=make(
+		Mixer,
+		[
+			stream,
+			anotherStream
+		]
+	 )
+
+	# build soundfile
+	soundfile( piece )
+
+
+Question:
+
+	what pitch does note have when soundfile() is called?
+	what duration?
+
+The way the code reads, you might think the piece starts off at the beginning of melody and rhythm.
+
+But that isn't what happens.
+
+Answer:
+
+	pitch 110
+	duration 0.1
+
+
+When note is created, it has no pitch or duration, but a couple of trigs have been attached to it to set the pitch and duration.
+
+When stream is created, it restarts note as part of the initialization.  This runs both the trigs on note.  Thus note now has 100 as its pitch and 0.2 as the duration
+
+When piece is created, it restarts stream, which restarts note. Thus note now has 110 as its pitch, and 0.1 as the duration.
+
+
+make()
+--------
+To completely understand this example, you also have to understand what the make() function does.
+
+The syntax of make is
+	make(
+		class,
+		[ *arguments ],
+		*keyValue
+	 )
+
+	class is the class to use.
+	arguments are the arguments used to create the new object.
+	keyValue is a list of setable keys and values, which are applied, one at a time, to the new object.
+
+So
+	note=make(
+		Note,
+		[
+			osc,
+			env
+		],
+		:trigme, [:pitch, melody],
+		:trigme, [:duration, rhythm]
+	 )
+
+is exactly equivalent to:
+
+	note=Note.new( osc, env )
+	note.trig( note, :pitch, melody )
+	note.trig( note, :duration, rhythm )
+
+So you can see that when note is created, the pitch has not been set, nor has the duration.  (Of course, osc might have a pitch, and env might have a duration, but we have not invoked the melody or rhythm sequences yet )
+
+Next, the two trigs are added, but these are not activated, so they don't set the pitch or duration, and they don't invoke the sequences.
+
+
+This kind of analysis might seem pedantic and low-level, but it's absolutely essential to get a good grasp of exactly what is happening if you want to avoid "gotcha" moments.
+
+In general, you need to become familiar (through experience and practice, and by actually paying attention and thinking about it) with what happens when.
+
+What happens when an object is created.
+What happens when make() is run.
+What happens when an object is started/restarted.
+
+
+For example, maybe you could instruct stream to not restart note?
+
+	stream=make(
+		Stream,
+		[ note ],
+		:startInput, false
+	 )
+
+There are two reasons why this will absolutely not work:
+
+1.	":startInput, false" doesn't take effect until after stream has already been created, and by that time it has already restarted note.
+
+2.  When stream restarts, it won't restart note, which means note will only play once, and after that you get nothing.
+
+
+
+solution
+---------
+
+The way to avoid stream restarting the input on creation is to create it without any inputs, and add the input later.
+
+eg:
+
+	note=make(
+		Note,
+		[
+			osc,
+			env
+		],
+		:trigme, [:pitch, melody],
+		:trigme, [:duration, rhythm],
+
+		:doTriggers			# initialise pitch and duration, using the first elements of the corresponding arrays.
+	 )
+
+	stream=make(
+		Stream,
+		[],				# create without an input
+		:add,	note		# add note to input, without restarting it.
+	 )
+
+		# alternatively,
+
+			stream=make(
+				Stream,
+				[],
+				:input, [ note ]
+			 )
+
+	piece=make(
+		Mixer,
+		[],
+		:input, [ stream, anotherStream ]
+	 )
+
+By working carefully in this way, note is initialised with the starting pitch and duration when it's created, and doesn't get restarted when stream or piece are created.
+
+
+Use a time-counter and a factory
+---------------------------------
+
+A completely different approach is to not use a SequenceGenerator, but to use a Factory that somehow knows where the music is up to.
+
+There is a class TickCounter that can keep track of ticks (ie output samples).  You can use SampleRate to calculate how many ticks correspond to a second.  The function soundfile() will create a TickCounter which is referenced by the global variable $OutputTraceReport, so you can always get the current tickCount with
+
+	$OutputTraceReport.tickCount
+
+
+Usually, it would be more convenient to use a Tempo instead, and just count off beats.
+
+Tempo can always tell you the current beat.  
+
+	tempo.beatNo
+
+ or, as a float (beat and fraction of a beat):
+
+	tempo.upto
+
+
+
+In the sample code for this module, you will find the definition for a function called beatCounter().
+The syntax is
+	beatCounter( tempo, bpb, mode=:beat, ppb=1 )
+
+		if mode is :beat, it will count off beats, otherwise it will count off pulses ( ppb is pulsesPerBeat )
+
+
+The function returns a factory,
+
+	currentBeat=beatCounter( tempo, 4 )		# count beats in 4/4 time signature.
+
+	currentBeat.nextValue						# returns the current beat in the bar.
+
+
+The way this works is that the factory creates a Stream based on a Duration. The Duration uses the Tempo, and lasts just one beat (or one pulse ).
+
+Whenever the Duration restarts, it triggers a macro on the factory, which updates the beat count.
+
+The Duration uses a small negative value for :endOffset so it restarts just before the actual beat (or pulse). This is to avoid off-by-one tick scenarios for anything that relies on it.
+
+Have a look at the code, to see exactly how this is implemented.  As an exercise, figure it out for yourself first, before you look at the code.
+
+
+Once you have a beat counter, you can use that as an index into an array. (The array will need to have one element for each beat or pulse.)
+
+If your sequence goes beyond one bar, you might need to use dummy values for the beatsPerBar, eg:
+
+
+	twoBarCounter=beatCounter( tempo, 8 )		# counts beats in two bars
+
+
+
+So, instead of something like this:
+
+	durationArray=[ 2, 1, 2, 1, 6 ]		# beats in 6/8 time-signature
+
+ do this:
+
+	twoBarCounter=beatCounter( tempo, 12 )		# two bars of 6/8
+	durationArray=[ 2, 0, 1, 2, 0, 1, 6, 0, 0, 0, 0, 0 ]
+		# The 0 values represent beats where the array should never get accessed.
+
+	currentDuration=durationArray[ currentBeat.nextValue ]
+		# correctly returns the duration for a new note, based on what beat we are up to.
+
+
+
+How come this wasn't a problem until now?
+-------------------------------------------
+
+In the first few modules, it was mostly random noise, with random melodies and random durations.
+
+It wasn't until 3.nature that we even had the concept of a bar structure, and even then there weren't enough harmonic, melodic or rhythmic queues for you to ever notice if some melodies or rhythms started in the wrong place.
+
+It wasn't until now that we have very strong rhythmic queues in the form of Euclidean Rhythms, and chord changes, that you could really notice when things got out of sync.
+
+
+If you suspect that something is starting at the wrong time, you can set up traces on specific objects so you can see in the log-file when things are starting, relative to other objects:
+
+
+eg
+	note=make(
+		Note,
+		[ osc, env ],
+
+		:me,	"note",
+		:trigtrace,	"note has restarted"
+	 )
+
+or
+	seq=make(
+		SequenceGenerator,
+		[ array ],
+
+		:me,	"seq",
+		:traceAtStart,	true,		# default is false
+		:startMessage,	"seq has restarted"
+	 )
+
+	SequenceGenerator is a Generator, not a Stopable, so you can't put a trig() on it.  traceAtStart and startMessage are specific to SequenceGenerator.
+
+
+
+The End
+---------
+
+Well, that's the end of this series of modules.  Hope you found it informative and useful.  Don't forget to check out the albums on bandcamp:
+
+	fakemusic2020.bandcamp.com
+
+
+cheers, Glenelg Smith, random guy on the internet.
+
+
+
+
+The Album
+-----------
+
+I wrote the script incrementally over a month or so.  I started with a blank script, but used some of the load files left over from previous albums.
+
+Because there are now so many "moving parts", the software has become quite complex, and I tried various experiments before settling on a final approach.  So, this time around, there were about 45 intermediate versions of the script.
+
+
+Once the final version of the script was completed, it took a little over two days to render the album, using a $300 laptop I bought second hand a few years ago.  The rendering happens on its own.  No hand-holding is neccessary.
+
+
+
