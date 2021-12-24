@@ -23,3 +23,5 @@ as well as a tutorial that covers the functionality being illustrated in the alb
 
 The source code includes the entire SnM Sound and Music Engine, plus
 the actual script used to create the album, and any extra load-files.
+
+fakemusiconbandcamp@gmail.com
